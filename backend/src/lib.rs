@@ -20,7 +20,7 @@ use tower_http::trace::TraceLayer;
 
 use config::Config;
 use openrouter::HttpOpenRouterClient;
-use state::AppState;
+use state::{AppState, StreamRegistry};
 
 pub async fn build_app(config: Config, db: sqlx::SqlitePool) -> Router {
     let openrouter: Arc<dyn openrouter::OpenRouterClient + Send + Sync> =
@@ -41,6 +41,7 @@ pub async fn build_app_with_client(
         db,
         config,
         openrouter,
+        stream_registry: StreamRegistry::default(),
     };
 
     let cors = CorsLayer::new()

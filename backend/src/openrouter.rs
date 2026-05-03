@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use futures_util::stream::BoxStream;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 use crate::error::AppError;
 
@@ -36,7 +37,11 @@ pub struct HttpOpenRouterClient {
 impl HttpOpenRouterClient {
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
-            client: Client::new(),
+            client: Client::builder()
+                .connect_timeout(Duration::from_secs(10))
+                .timeout(Duration::from_secs(120))
+                .build()
+                .expect("reqwest client"),
             api_key: api_key.into(),
         }
     }

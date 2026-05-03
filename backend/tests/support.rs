@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use gpt_copy_v9::config::Config;
 use gpt_copy_v9::openrouter::FakeOpenRouterClient;
-use gpt_copy_v9::state::AppState;
+use gpt_copy_v9::state::{AppState, StreamRegistry};
 
 /// Create a fresh in-memory SQLite pool with migrations applied.
 pub async fn test_pool() -> SqlitePool {
@@ -35,6 +35,7 @@ pub async fn test_state(fake_responses: Vec<String>) -> AppState {
         db: pool,
         config,
         openrouter,
+        stream_registry: StreamRegistry::default(),
     }
 }
 

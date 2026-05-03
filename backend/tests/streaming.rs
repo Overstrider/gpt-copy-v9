@@ -1,5 +1,5 @@
 mod support;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum_test::TestServer;
@@ -53,6 +53,22 @@ impl OpenRouterClient for NoDoneStreamClient {
         Ok(Box::pin(stream::iter([Ok(StreamEvent::Delta(
             "clean eof".to_string(),
         ))])))
+    }
+}
+
+struct CapturingOpenRouterClient {
+    calls: Arc<Mutex<Vec<Vec<ChatMessage>>>>,
+}
+
+#[async_trait]
+impl OpenRouterClient for CapturingOpenRouterClient {
+    async fn stream_chat(
+        &self,
+        _model: &str,
+        messages: Vec<ChatMessage>,
+    ) -> Result<BoxStream<'static, Result<StreamEvent, AppError>>, AppError> {
+        self.calls.lock().unwrap().push(messages);
+        Ok(Box::pin(stream::iter([Ok(StreamEvent::Done)])))
     }
 }
 
@@ -222,4 +238,40 @@ async fn test_stream_clean_eof_persists_message_pair() {
     assert_eq!(arr[0]["content"], "Hello");
     assert_eq!(arr[1]["role"], "assistant");
     assert_eq!(arr[1]["content"], "clean eof");
+}
+
+#[tokio::test]
+async fn test_stream_sends_only_recent_history_to_openrouter() {
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let client = Arc::new(CapturingOpenRouterClient {
+        calls: calls.clone(),
+    });
+    let (app, pool) = test_app_with_client(client).await;
+    let server = TestServer::new(app).unwrap();
+
+    let create = server
+        .post("/api/conversations")
+        .json(&serde_json::json!({ "title": "Stream Test" }))
+        .await;
+    let conv: serde_json::Value = create.json();
+    let id = conv["id"].as_str().unwrap();
+
+    for i in 0..45 {
+        gpt_copy_v9::repository::create_message(&pool, id, "user", &format!("old-{i}"))
+            .await
+            .unwrap();
+    }
+
+    let stream_resp = server
+        .post(&format!("/api/conversations/{id}/stream"))
+        .json(&serde_json::json!({ "content": "current" }))
+        .await;
+    stream_resp.assert_status_ok();
+    let _ = stream_resp.text();
+
+    let calls = calls.lock().unwrap();
+    let messages = calls.first().unwrap();
+    assert_eq!(messages.len(), 41);
+    assert_eq!(messages.first().unwrap().content, "old-5");
+    assert_eq!(messages.last().unwrap().content, "current");
 }

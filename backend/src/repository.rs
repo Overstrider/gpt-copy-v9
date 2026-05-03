@@ -79,7 +79,7 @@ pub async fn delete_conversation(pool: &SqlitePool, id: &str) -> AppResult<()> {
 
 pub async fn list_messages(pool: &SqlitePool, conversation_id: &str) -> AppResult<Vec<Message>> {
     let rows = sqlx::query_as::<_, Message>(
-        "SELECT id, conversation_id, role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC",
+        "SELECT id, conversation_id, role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC, rowid ASC",
     )
     .bind(conversation_id)
     .fetch_all(pool)
@@ -123,7 +123,7 @@ pub async fn create_user_assistant_message_pair(
     let user_id = Uuid::new_v4().to_string();
     let assistant_id = Uuid::new_v4().to_string();
     let user_created_at = Utc::now();
-    let assistant_created_at = Utc::now();
+    let assistant_created_at = user_created_at + chrono::Duration::microseconds(1);
 
     let mut tx = pool.begin().await?;
     sqlx::query(
