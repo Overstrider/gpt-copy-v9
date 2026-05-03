@@ -3,7 +3,7 @@ import { API_BASE_URL } from "./config";
 
 export type StreamCallbacks = {
   onDelta: (content: string) => void;
-  onDone: () => void;
+  onDone: () => void | Promise<void>;
   onError: (message: string) => void;
 };
 
@@ -44,17 +44,17 @@ export async function streamChat(
   const decoder = new TextDecoder();
   let buffer = "";
   let doneFired = false;
-  const fireDone = () => {
+  const fireDone = async () => {
     if (!doneFired) {
       doneFired = true;
-      callbacks.onDone();
+      await callbacks.onDone();
     }
   };
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
-      fireDone();
+      await fireDone();
       break;
     }
     buffer += decoder.decode(value, { stream: true });
@@ -70,7 +70,7 @@ export async function streamChat(
         const parsed = JSON.parse(data) as unknown;
         const event = StreamEventSchema.safeParse(parsed);
         if (!event.success) continue;
-        handleStreamEvent(event.data, { ...callbacks, onDone: fireDone });
+        await handleStreamEvent(event.data, { ...callbacks, onDone: fireDone });
         if (event.data.type === "done" || event.data.type === "error") {
           return;
         }
@@ -81,13 +81,13 @@ export async function streamChat(
   }
 }
 
-function handleStreamEvent(event: StreamEvent, callbacks: StreamCallbacks) {
+async function handleStreamEvent(event: StreamEvent, callbacks: StreamCallbacks) {
   switch (event.type) {
     case "delta":
       callbacks.onDelta(event.content);
       break;
     case "done":
-      callbacks.onDone();
+      await callbacks.onDone();
       break;
     case "error":
       callbacks.onError(event.message);

@@ -31,12 +31,12 @@ export function useChatStream(conversationId: string | null) {
           content,
           {
             onDelta: (delta) => setStreamContent((prev) => prev + delta),
-            onDone: () => {
-              setStreamState("idle");
+            onDone: async () => {
               // Refresh messages to show persisted assistant reply
-              qc.invalidateQueries({
+              await qc.invalidateQueries({
                 queryKey: messagesKey(conversationId),
               });
+              setStreamState("idle");
               setStreamContent("");
             },
             onError: (msg) => {

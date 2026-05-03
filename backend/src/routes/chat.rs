@@ -1,4 +1,3 @@
-// Implemented in TASK-007
 use axum::{
     Json,
     body::Body,
@@ -17,6 +16,7 @@ pub struct StreamRequest {
     pub content: String,
 }
 
+// 40 messages is roughly 20 turns, keeping routine chats within context and payload limits.
 const MAX_CONTEXT_MESSAGES: usize = 40;
 
 #[derive(Serialize)]
@@ -41,14 +41,16 @@ pub async fn stream_chat(
             "A stream is already in progress for this conversation".to_string(),
         ));
     }
-    let stream_registry = state.stream_registry.clone();
-    let locked_conversation_id = conversation_id.clone();
+    let stream_guard = StreamReleaseGuard {
+        registry: state.stream_registry.clone(),
+        conversation_id: conversation_id.clone(),
+    };
 
     // Get conversation history
     let history = match crate::repository::list_messages(&state.db, &conversation_id).await {
         Ok(history) => history,
         Err(e) => {
-            stream_registry.release(&locked_conversation_id).await;
+            drop(stream_guard);
             return Err(e);
         }
     };
@@ -75,97 +77,77 @@ pub async fn stream_chat(
     {
         Ok(stream) => stream,
         Err(e) => {
-            stream_registry.release(&locked_conversation_id).await;
+            drop(stream_guard);
             return Err(AppError::OpenRouter(e.to_string()));
         }
     };
-
-    use futures_util::StreamExt;
-    use std::sync::{Arc, Mutex};
-
-    let buffer = Arc::new(Mutex::new(String::new()));
-    let buffer_clone = buffer.clone();
-
-    let sse_stream = stream.map(move |event| {
-        let chunk = match &event {
-            Ok(crate::openrouter::StreamEvent::Delta(delta)) => {
-                buffer_clone.lock().unwrap().push_str(delta);
-                sse_frame(&SsePayload::Delta { content: delta })
-            }
-            Ok(crate::openrouter::StreamEvent::Done) => sse_frame(&SsePayload::Done),
-            Err(e) => {
-                tracing::error!("Streaming chat error: {e}");
-                sse_frame(&SsePayload::Error {
-                    message: stream_error_message(e),
-                })
-            }
-        };
-        Ok::<_, std::convert::Infallible>(chunk)
-    });
 
     // Collect and persist after stream
     let (tx, rx) = tokio::sync::mpsc::channel::<Result<String, std::convert::Infallible>>(64);
 
     let db2 = db.clone();
     let conv_id2 = conv_id.clone();
-    let buf_final = buffer.clone();
     let user_content = body.content.clone();
-    let release_registry = stream_registry.clone();
-    let release_conversation_id = locked_conversation_id.clone();
 
     tokio::spawn(async move {
         use futures_util::StreamExt;
-        let mut s = Box::pin(sse_stream);
-        let mut completed = false;
-        let mut receiver_open = true;
-        let mut stream_failed = false;
-        while let Some(item) = s.next().await {
-            let (is_done, is_error) = item
-                .as_ref()
-                .map(|sse| {
-                    (
-                        sse_type_matches(sse, "done"),
-                        sse_type_matches(sse, "error"),
-                    )
-                })
-                .unwrap_or((false, false));
-            if is_done {
-                completed = true;
-                break;
-            }
-            if tx.send(item).await.is_err() {
-                receiver_open = false;
-                break;
-            }
-            if is_error {
-                stream_failed = true;
-                break;
+        let _stream_guard = stream_guard;
+        let mut s = Box::pin(stream);
+        let mut content = String::new();
+
+        while let Some(event) = s.next().await {
+            match event {
+                Ok(crate::openrouter::StreamEvent::Delta(delta)) => {
+                    content.push_str(&delta);
+                    if tx
+                        .send(Ok(sse_frame(&SsePayload::Delta { content: &delta })))
+                        .await
+                        .is_err()
+                    {
+                        return;
+                    }
+                }
+                Ok(crate::openrouter::StreamEvent::Done) => {
+                    let terminal = if content.is_empty() {
+                        sse_frame(&SsePayload::Error {
+                            message: "Upstream model returned an empty response",
+                        })
+                    } else {
+                        match crate::repository::create_user_assistant_message_pair(
+                            &db2,
+                            &conv_id2,
+                            &user_content,
+                            &content,
+                        )
+                        .await
+                        {
+                            Ok(()) => sse_frame(&SsePayload::Done),
+                            Err(e) => {
+                                tracing::error!("Failed to persist streamed message pair: {e}");
+                                sse_frame(&SsePayload::Error {
+                                    message: "Failed to save streamed response",
+                                })
+                            }
+                        }
+                    };
+                    let _ = tx.send(Ok(terminal)).await;
+                    return;
+                }
+                Err(e) => {
+                    tracing::error!("Streaming chat error: {e}");
+                    let _ = tx
+                        .send(Ok(sse_frame(&SsePayload::Error {
+                            message: stream_error_message(&e),
+                        })))
+                        .await;
+                    return;
+                }
             }
         }
-        let content = buf_final.lock().unwrap().clone();
-        if !completed && receiver_open && !stream_failed && !content.is_empty() {
+
+        if !content.is_empty() {
             tracing::warn!("Streaming chat ended without a done event; skipping persistence");
         }
-        if completed {
-            let terminal = match crate::repository::create_user_assistant_message_pair(
-                &db2,
-                &conv_id2,
-                &user_content,
-                &content,
-            )
-            .await
-            {
-                Ok(()) => sse_frame(&SsePayload::Done),
-                Err(e) => {
-                    tracing::error!("Failed to persist streamed message pair: {e}");
-                    sse_frame(&SsePayload::Error {
-                        message: "Failed to save streamed response",
-                    })
-                }
-            };
-            let _ = tx.send(Ok(terminal)).await;
-        }
-        release_registry.release(&release_conversation_id).await;
     });
 
     let body_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
@@ -196,15 +178,17 @@ fn sse_frame(payload: &SsePayload<'_>) -> String {
     format!("data: {json}\n\n")
 }
 
-fn sse_type_matches(sse: &str, expected: &str) -> bool {
-    sse.strip_prefix("data: ")
-        .or_else(|| sse.lines().find_map(|line| line.strip_prefix("data: ")))
-        .and_then(|data| serde_json::from_str::<serde_json::Value>(data).ok())
-        .and_then(|value| {
-            value
-                .get("type")
-                .and_then(|event_type| event_type.as_str())
-                .map(|event_type| event_type == expected)
-        })
-        .unwrap_or(false)
+struct StreamReleaseGuard {
+    registry: crate::state::StreamRegistry,
+    conversation_id: String,
+}
+
+impl Drop for StreamReleaseGuard {
+    fn drop(&mut self) {
+        let registry = self.registry.clone();
+        let conversation_id = self.conversation_id.clone();
+        tokio::spawn(async move {
+            registry.release(&conversation_id).await;
+        });
+    }
 }

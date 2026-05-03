@@ -38,9 +38,7 @@ describe("MessageBubble", () => {
       content: "<script>alert('xss')</script>",
     };
     render(<MessageBubble message={xssMessage} />);
-    expect(
-      document.querySelector("script[data-dangerous]")
-    ).not.toBeInTheDocument();
+    expect(document.querySelector("script")).not.toBeInTheDocument();
   });
 });
 

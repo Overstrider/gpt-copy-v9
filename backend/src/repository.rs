@@ -106,11 +106,11 @@ pub async fn create_message(
     .execute(pool)
     .await?;
     // Touch conversation updated_at
-    let _ = sqlx::query("UPDATE conversations SET updated_at = ? WHERE id = ?")
+    sqlx::query("UPDATE conversations SET updated_at = ? WHERE id = ?")
         .bind(now)
         .bind(conversation_id)
         .execute(pool)
-        .await;
+        .await?;
     get_message(pool, conversation_id, &id).await
 }
 

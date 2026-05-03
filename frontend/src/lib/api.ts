@@ -11,7 +11,7 @@ import { API_BASE_URL } from "./config";
 
 async function fetchJson<T>(
   schema: z.ZodType<T>,
-  input: RequestInfo,
+  input: string,
   init?: RequestInit
 ): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${input}`, {

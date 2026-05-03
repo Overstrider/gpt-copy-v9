@@ -35,7 +35,7 @@ impl Config {
             .unwrap_or_else(|_| "nvidia/nemotron-3-super-120b-a12b:free".to_string());
         let database_url =
             env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:./gpt-copy-v9.db".to_string());
-        let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+        let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
         let port = env::var("PORT")
             .unwrap_or_else(|_| "3001".to_string())
             .parse()

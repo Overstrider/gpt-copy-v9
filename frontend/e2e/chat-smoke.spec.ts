@@ -128,7 +128,10 @@ test.describe("Chat smoke test", () => {
     const composer = page.getByTestId("composer-textarea");
     await composer.fill("Hello");
     await page.getByTestId("composer-send").click();
-    await expect(page.getByText("Hello world")).toBeVisible();
+    await expect(page.getByTestId("streaming-bubble")).toBeHidden();
+    await expect(page.getByTestId("message-m-assistant")).toContainText(
+      "Hello world"
+    );
   });
 });
 
