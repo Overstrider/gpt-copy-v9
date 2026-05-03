@@ -35,11 +35,14 @@ impl IntoResponse for AppError {
         let (status, code, message) = match &self {
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg.clone()),
-            AppError::Internal(msg) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "INTERNAL_ERROR",
-                msg.clone(),
-            ),
+            AppError::Internal(msg) => {
+                tracing::error!("Internal error: {msg}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "INTERNAL_ERROR",
+                    "An internal server error occurred".to_string(),
+                )
+            }
             AppError::Database(e) => {
                 tracing::error!("Database error: {e}");
                 (

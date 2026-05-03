@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use axum::{
     Router,
+    http::HeaderValue,
     routing::{delete, get, post},
 };
 use tower_http::cors::{Any, CorsLayer};
@@ -33,6 +34,9 @@ pub async fn build_app_with_client(
     db: sqlx::SqlitePool,
     openrouter: Arc<dyn openrouter::OpenRouterClient + Send + Sync>,
 ) -> Router {
+    let frontend_origin = HeaderValue::from_str(&config.frontend_origin)
+        .expect("FRONTEND_ORIGIN must be a valid HTTP header value");
+
     let state = AppState {
         db,
         config,
@@ -40,7 +44,7 @@ pub async fn build_app_with_client(
     };
 
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(frontend_origin)
         .allow_methods(Any)
         .allow_headers(Any);
 

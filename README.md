@@ -26,6 +26,7 @@ cp .env.example .env
 | `OPENROUTER_API_KEY` | Required for live chat. Automated tests use mocks. | — |
 | `OPENROUTER_MODEL` | Model to use via OpenRouter | `nvidia/nemotron-3-super-120b-a12b:free` |
 | `DATABASE_URL` | SQLite database path | `sqlite:./gpt-copy-v9.db` |
+| `FRONTEND_ORIGIN` | Allowed browser origin for CORS | `http://localhost:3000` |
 
 > **Note**: Automated tests use mocked or deterministic OpenRouter behavior. Live chat requires a local `OPENROUTER_API_KEY`.
 
@@ -85,4 +86,4 @@ npm run test:e2e
 | `cargo: command not found` | Install Rust via `rustup.rs` |
 | `npm: command not found` | Install Node.js 18+ |
 | SQLite errors | Delete `*.db` files and restart the backend |
-| CORS errors | Ensure backend is running on port 3001 and frontend on 3000 |
+| CORS errors | Ensure `FRONTEND_ORIGIN` matches the frontend origin, usually `http://localhost:3000` |

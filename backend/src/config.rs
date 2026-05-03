@@ -7,6 +7,7 @@ pub struct Config {
     pub openrouter_model: String,
     pub host: String,
     pub port: u16,
+    pub frontend_origin: String,
 }
 
 impl Config {
@@ -22,6 +23,8 @@ impl Config {
             .unwrap_or_else(|_| "3001".to_string())
             .parse()
             .unwrap_or(3001);
+        let frontend_origin =
+            env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
 
         Config {
             database_url,
@@ -29,6 +32,7 @@ impl Config {
             openrouter_model,
             host,
             port,
+            frontend_origin,
         }
     }
 
@@ -40,6 +44,7 @@ impl Config {
             openrouter_model: "nvidia/nemotron-3-super-120b-a12b:free".to_string(),
             host: "127.0.0.1".to_string(),
             port: 3001,
+            frontend_origin: "http://localhost:3000".to_string(),
         }
     }
 }
