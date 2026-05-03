@@ -1,8 +1,8 @@
 // Implemented in TASK-004
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use serde::Deserialize;
 
@@ -51,6 +51,7 @@ pub async fn update_conversation(
     Path(id): Path<String>,
     Json(body): Json<UpdateConversationRequest>,
 ) -> AppResult<Json<Conversation>> {
+    validate_create_conversation(&body.title)?;
     let conv =
         crate::repository::update_conversation(&state.db, &id, body.title.as_deref()).await?;
     Ok(Json(conv))

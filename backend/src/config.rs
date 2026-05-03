@@ -11,7 +11,8 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Self {
-        let openrouter_api_key = env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| String::new());
+        let openrouter_api_key = env::var("OPENROUTER_API_KEY")
+            .expect("OPENROUTER_API_KEY must be set (set it in .env or the environment)");
         let openrouter_model = env::var("OPENROUTER_MODEL")
             .unwrap_or_else(|_| "nvidia/nemotron-3-super-120b-a12b:free".to_string());
         let database_url =

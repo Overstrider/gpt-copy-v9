@@ -81,29 +81,61 @@ impl OpenRouterClient for HttpOpenRouterClient {
             )));
         }
 
-        let stream = response.bytes_stream().map(move |chunk_res| {
-            let chunk = chunk_res.map_err(|e| AppError::OpenRouter(e.to_string()))?;
-            let text = String::from_utf8_lossy(&chunk);
-            for line in text.lines() {
-                let line = line.trim();
-                if let Some(data) = line.strip_prefix("data: ") {
-                    if data == "[DONE]" {
-                        return Ok(StreamEvent::Done);
+        // Use a stateful line-buffer so a single HTTP chunk can yield multiple
+        // StreamEvents and we never emit a spurious Done for a non-terminal chunk.
+        use futures_util::stream;
+        let byte_stream = response.bytes_stream();
+
+        let sse_stream = stream::unfold(
+            (byte_stream, String::new()),
+            |(mut byte_stream, mut buf)| async move {
+                loop {
+                    // Drain any complete lines already in the buffer.
+                    while let Some(pos) = buf.find('\n') {
+                        let line: String = buf.drain(..=pos).collect();
+                        let line = line.trim();
+                        if let Some(data) = line.strip_prefix("data: ") {
+                            if data == "[DONE]" {
+                                return Some((vec![Ok(StreamEvent::Done)], (byte_stream, buf)));
+                            }
+                            if let Ok(val) = serde_json::from_str::<serde_json::Value>(data) {
+                                if let Some(delta) = val
+                                    .pointer("/choices/0/delta/content")
+                                    .and_then(|v| v.as_str())
+                                {
+                                    let delta = delta.to_string();
+                                    return Some((
+                                        vec![Ok(StreamEvent::Delta(delta))],
+                                        (byte_stream, buf),
+                                    ));
+                                }
+                            }
+                        }
                     }
-                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(data) {
-                        if let Some(delta) = val
-                            .pointer("/choices/0/delta/content")
-                            .and_then(|v| v.as_str())
-                        {
-                            return Ok(StreamEvent::Delta(delta.to_string()));
+
+                    // Need more bytes.
+                    use futures_util::StreamExt;
+                    match byte_stream.next().await {
+                        Some(Ok(chunk)) => {
+                            buf.push_str(&String::from_utf8_lossy(&chunk));
+                        }
+                        Some(Err(e)) => {
+                            return Some((
+                                vec![Err(AppError::OpenRouter(e.to_string()))],
+                                (byte_stream, buf),
+                            ));
+                        }
+                        None => {
+                            // Stream exhausted.
+                            return None;
                         }
                     }
                 }
-            }
-            Ok(StreamEvent::Done)
-        });
+            },
+        )
+        .flat_map(|events| stream::iter(events));
 
-        Ok(Box::pin(stream))
+        Ok(Box::pin(sse_stream))
     }
 }
 

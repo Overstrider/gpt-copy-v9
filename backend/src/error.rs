@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::Serialize;
 use thiserror::Error;
@@ -48,7 +48,14 @@ impl IntoResponse for AppError {
                     "A database error occurred".to_string(),
                 )
             }
-            AppError::OpenRouter(msg) => (StatusCode::BAD_GATEWAY, "OPENROUTER_ERROR", msg.clone()),
+            AppError::OpenRouter(msg) => {
+                tracing::error!("OpenRouter error: {msg}");
+                (
+                    StatusCode::BAD_GATEWAY,
+                    "OPENROUTER_ERROR",
+                    "Upstream model service error".to_string(),
+                )
+            }
         };
 
         let body = ErrorBody {

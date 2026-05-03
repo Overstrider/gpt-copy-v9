@@ -1,10 +1,10 @@
 // Implemented in TASK-007
 use axum::{
+    Json,
     body::Body,
     extract::{Path, State},
     http::StatusCode,
     response::Response,
-    Json,
 };
 use serde::Deserialize;
 
@@ -87,9 +87,16 @@ pub async fn stream_chat(
         use futures_util::StreamExt;
         let mut s = Box::pin(sse_stream);
         while let Some(item) = s.next().await {
+            // Detect done by parsing the SSE envelope JSON (not fragile string match).
             let is_done = item
                 .as_ref()
-                .map(|s: &String| s.contains("\"done\""))
+                .map(|sse: &String| {
+                    sse.strip_prefix("data: ")
+                        .or_else(|| sse.lines().find_map(|l| l.strip_prefix("data: ")))
+                        .and_then(|d| serde_json::from_str::<serde_json::Value>(d).ok())
+                        .and_then(|v| v.get("type").and_then(|t| t.as_str()).map(|t| t == "done"))
+                        .unwrap_or(false)
+                })
                 .unwrap_or(false);
             let _ = tx.send(item).await;
             if is_done {
