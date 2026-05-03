@@ -1,5 +1,6 @@
 use sqlx::SqlitePool;
-use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use gpt_copy_v9::config::Config;
@@ -8,9 +9,12 @@ use gpt_copy_v9::state::AppState;
 
 /// Create a fresh in-memory SQLite pool with migrations applied.
 pub async fn test_pool() -> SqlitePool {
+    let options = SqliteConnectOptions::from_str("sqlite::memory:")
+        .expect("sqlite options")
+        .foreign_keys(true);
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
-        .connect("sqlite::memory:")
+        .connect_with(options)
         .await
         .expect("in-memory pool");
     sqlx::migrate!("./migrations")

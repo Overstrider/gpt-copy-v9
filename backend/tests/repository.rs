@@ -123,3 +123,27 @@ async fn test_delete_conversation_cascades_messages() {
         .unwrap();
     assert_eq!(count.0, 0);
 }
+
+#[tokio::test]
+async fn test_sqlite_foreign_key_cascade_is_enabled() {
+    let pool = test_pool().await;
+    let conv = repository::create_conversation(&pool, "Chat")
+        .await
+        .unwrap();
+    repository::create_message(&pool, &conv.id, "user", "msg1")
+        .await
+        .unwrap();
+
+    sqlx::query("DELETE FROM conversations WHERE id = ?")
+        .bind(&conv.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM messages WHERE conversation_id = ?")
+        .bind(&conv.id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count.0, 0);
+}
