@@ -104,4 +104,6 @@ async fn test_list_conversations_ordered() {
     let body: serde_json::Value = resp.json();
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 2);
+    assert_eq!(arr[0]["title"], "Second");
+    assert_eq!(arr[1]["title"], "First");
 }

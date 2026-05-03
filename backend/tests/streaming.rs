@@ -50,10 +50,13 @@ async fn test_stream_persists_user_message() {
     let id = conv["id"].as_str().unwrap();
 
     // Do the stream request
-    let _stream_resp = server
+    let stream_resp = server
         .post(&format!("/api/conversations/{id}/stream"))
         .json(&serde_json::json!({ "content": "Hello" }))
         .await;
+    stream_resp.assert_status_ok();
+    let stream_body = stream_resp.text();
+    assert!(stream_body.contains("\"type\":\"done\""));
 
     // Check messages were persisted
     let msgs_resp = server
@@ -62,8 +65,9 @@ async fn test_stream_persists_user_message() {
     msgs_resp.assert_status_ok();
     let msgs: serde_json::Value = msgs_resp.json();
     let arr = msgs.as_array().unwrap();
-    // At minimum the user message should exist
-    assert!(!arr.is_empty());
+    assert_eq!(arr.len(), 2);
     assert_eq!(arr[0]["role"], "user");
     assert_eq!(arr[0]["content"], "Hello");
+    assert_eq!(arr[1]["role"], "assistant");
+    assert_eq!(arr[1]["content"], "World");
 }

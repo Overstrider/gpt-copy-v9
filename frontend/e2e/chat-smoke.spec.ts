@@ -2,6 +2,14 @@ import { test, expect, Page } from "@playwright/test";
 
 // Mock backend API responses
 async function setupMocks(page: Page) {
+  let messages = [] as Array<{
+    id: string;
+    conversation_id: string;
+    role: "user" | "assistant";
+    content: string;
+    created_at: string;
+  }>;
+
   // Mock conversations list
   await page.route("**/api/conversations", async (route) => {
     if (route.request().method() === "GET") {
@@ -39,7 +47,7 @@ async function setupMocks(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([]),
+        body: JSON.stringify(messages),
       });
     } else if (route.request().method() === "POST") {
       await route.fulfill({
@@ -60,6 +68,22 @@ async function setupMocks(page: Page) {
 
   // Mock stream endpoint with deterministic SSE
   await page.route("**/api/conversations/*/stream", async (route) => {
+    messages = [
+      {
+        id: "m-user",
+        conversation_id: "c1",
+        role: "user",
+        content: "Hello",
+        created_at: "2024-01-01T00:00:01Z",
+      },
+      {
+        id: "m-assistant",
+        conversation_id: "c1",
+        role: "assistant",
+        content: "Hello world",
+        created_at: "2024-01-01T00:00:02Z",
+      },
+    ];
     const sseBody =
       'data: {"type":"delta","content":"Hello"}\n\n' +
       'data: {"type":"delta","content":" world"}\n\n' +
@@ -104,6 +128,7 @@ test.describe("Chat smoke test", () => {
     const composer = page.getByTestId("composer-textarea");
     await composer.fill("Hello");
     await page.getByTestId("composer-send").click();
+    await expect(page.getByText("Hello world")).toBeVisible();
   });
 });
 
