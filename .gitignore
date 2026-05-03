@@ -7,6 +7,8 @@ dist/
 build/
 .next/
 coverage/
+test-results/
+frontend/test-results/
 .cache/
 .codedungeon/*.db
 .codedungeon/*.db-journal
