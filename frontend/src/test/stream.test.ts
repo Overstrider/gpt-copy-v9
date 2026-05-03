@@ -35,4 +35,61 @@ describe("streamChat", () => {
     expect(onDone).toHaveBeenCalledOnce();
     expect(onError).not.toHaveBeenCalled();
   });
+
+  it("calls onError with the HTTP error response message", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: "OPENROUTER_ERROR", message: "Upstream failed" }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const onDelta = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+
+    await streamChat("conv-1", "Hi", { onDelta, onDone, onError });
+
+    expect(onError).toHaveBeenCalledWith("Upstream failed");
+    expect(onDelta).not.toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it("calls onError for explicit SSE error events", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        streamBody('data: {"type":"error","message":"upstream failed"}\n\n'),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const onDelta = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+
+    await streamChat("conv-1", "Hi", { onDelta, onDone, onError });
+
+    expect(onError).toHaveBeenCalledWith("upstream failed");
+    expect(onDelta).not.toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it("calls onDone for explicit SSE done events", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(streamBody('data: {"type":"done"}\n\n'), { status: 200 })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const onDelta = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+
+    await streamChat("conv-1", "Hi", { onDelta, onDone, onError });
+
+    expect(onDone).toHaveBeenCalledOnce();
+    expect(onDelta).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
 });

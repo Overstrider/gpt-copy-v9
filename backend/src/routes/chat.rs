@@ -88,6 +88,8 @@ pub async fn stream_chat(
         use futures_util::StreamExt;
         let mut s = Box::pin(sse_stream);
         let mut completed = false;
+        let mut receiver_open = true;
+        let mut stream_failed = false;
         while let Some(item) = s.next().await {
             let (is_done, is_error) = item
                 .as_ref()
@@ -102,21 +104,29 @@ pub async fn stream_chat(
                 completed = true;
             }
             if tx.send(item).await.is_err() {
+                receiver_open = false;
                 break;
             }
             if is_done || is_error {
+                stream_failed = is_error;
                 break;
             }
         }
+        let content = buf_final.lock().unwrap().clone();
+        if !completed && receiver_open && !stream_failed && !content.is_empty() {
+            completed = true;
+        }
         if completed {
-            let content = buf_final.lock().unwrap().clone();
-            let _ = crate::repository::create_user_assistant_message_pair(
+            if let Err(e) = crate::repository::create_user_assistant_message_pair(
                 &db2,
                 &conv_id2,
                 &user_content,
                 &content,
             )
-            .await;
+            .await
+            {
+                tracing::error!("Failed to persist streamed message pair: {e}");
+            }
         }
     });
 

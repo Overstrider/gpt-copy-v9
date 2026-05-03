@@ -41,6 +41,21 @@ impl OpenRouterClient for ErroringStreamClient {
     }
 }
 
+struct NoDoneStreamClient;
+
+#[async_trait]
+impl OpenRouterClient for NoDoneStreamClient {
+    async fn stream_chat(
+        &self,
+        _model: &str,
+        _messages: Vec<ChatMessage>,
+    ) -> Result<BoxStream<'static, Result<StreamEvent, AppError>>, AppError> {
+        Ok(Box::pin(stream::iter([Ok(StreamEvent::Delta(
+            "clean eof".to_string(),
+        ))])))
+    }
+}
+
 async fn test_app_with_client(
     openrouter: Arc<dyn OpenRouterClient + Send + Sync>,
 ) -> (axum::Router, sqlx::SqlitePool) {
@@ -174,4 +189,37 @@ async fn test_stream_error_is_sanitized_and_does_not_persist_partial_assistant()
     let msgs: serde_json::Value = msgs_resp.json();
     let arr = msgs.as_array().unwrap();
     assert_eq!(arr.len(), 0);
+}
+
+#[tokio::test]
+async fn test_stream_clean_eof_persists_message_pair() {
+    let (app, _pool) = test_app_with_client(Arc::new(NoDoneStreamClient)).await;
+    let server = TestServer::new(app).unwrap();
+
+    let create = server
+        .post("/api/conversations")
+        .json(&serde_json::json!({ "title": "Stream Test" }))
+        .await;
+    let conv: serde_json::Value = create.json();
+    let id = conv["id"].as_str().unwrap();
+
+    let stream_resp = server
+        .post(&format!("/api/conversations/{id}/stream"))
+        .json(&serde_json::json!({ "content": "Hello" }))
+        .await;
+    stream_resp.assert_status_ok();
+    let stream_body = stream_resp.text();
+    assert!(stream_body.contains("clean eof"));
+
+    let msgs_resp = server
+        .get(&format!("/api/conversations/{id}/messages"))
+        .await;
+    msgs_resp.assert_status_ok();
+    let msgs: serde_json::Value = msgs_resp.json();
+    let arr = msgs.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+    assert_eq!(arr[0]["role"], "user");
+    assert_eq!(arr[0]["content"], "Hello");
+    assert_eq!(arr[1]["role"], "assistant");
+    assert_eq!(arr[1]["content"], "clean eof");
 }
