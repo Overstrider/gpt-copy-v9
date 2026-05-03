@@ -63,7 +63,14 @@ impl IntoResponse for AppError {
                     "Request conflict".to_string(),
                 )
             }
-            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", msg.clone()),
+            AppError::Unauthorized(msg) => {
+                tracing::debug!("Unauthorized request: {msg}");
+                (
+                    StatusCode::UNAUTHORIZED,
+                    "UNAUTHORIZED",
+                    "Unauthorized".to_string(),
+                )
+            }
             AppError::Internal(msg) => {
                 tracing::error!("Internal error: {msg}");
                 (

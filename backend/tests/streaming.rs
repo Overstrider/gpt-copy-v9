@@ -55,6 +55,21 @@ impl OpenRouterClient for NoDoneStreamClient {
     }
 }
 
+struct OversizedStreamClient;
+
+#[async_trait]
+impl OpenRouterClient for OversizedStreamClient {
+    async fn stream_chat(
+        &self,
+        _model: &str,
+        _messages: Vec<ChatMessage>,
+    ) -> Result<BoxStream<'static, Result<StreamEvent, AppError>>, AppError> {
+        Ok(Box::pin(stream::iter([Ok(StreamEvent::Delta(
+            "x".repeat(262_145),
+        ))])))
+    }
+}
+
 struct CapturingOpenRouterClient {
     calls: Arc<Mutex<Vec<Vec<ChatMessage>>>>,
 }
@@ -196,6 +211,36 @@ async fn test_stream_error_is_sanitized_and_does_not_persist_partial_assistant()
     let stream_body = stream_resp.text();
     assert!(stream_body.contains("Upstream model service error"));
     assert!(!stream_body.contains("secret upstream stream failure"));
+
+    let msgs_resp = server
+        .get(&format!("/api/conversations/{id}/messages"))
+        .await;
+    msgs_resp.assert_status_ok();
+    let msgs: serde_json::Value = msgs_resp.json();
+    let arr = msgs.as_array().unwrap();
+    assert_eq!(arr.len(), 0);
+}
+
+#[tokio::test]
+async fn test_stream_response_over_limit_is_sanitized_and_not_persisted() {
+    let (app, _pool) = test_app_with_client(Arc::new(OversizedStreamClient)).await;
+    let server = test_server(app);
+
+    let create = server
+        .post("/api/conversations")
+        .json(&serde_json::json!({ "title": "Stream Test" }))
+        .await;
+    let conv: serde_json::Value = create.json();
+    let id = conv["id"].as_str().unwrap();
+
+    let stream_resp = server
+        .post(&format!("/api/conversations/{id}/stream"))
+        .json(&serde_json::json!({ "content": "Hello" }))
+        .await;
+    stream_resp.assert_status_ok();
+    let stream_body = stream_resp.text();
+    assert!(stream_body.contains("Assistant response exceeded maximum length"));
+    assert!(!stream_body.contains(&"x".repeat(256)));
 
     let msgs_resp = server
         .get(&format!("/api/conversations/{id}/messages"))

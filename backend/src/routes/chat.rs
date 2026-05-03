@@ -18,6 +18,7 @@ pub struct StreamRequest {
 
 // 40 messages is roughly 20 turns, keeping routine chats within context and payload limits.
 const MAX_CONTEXT_MESSAGES: usize = 40;
+const MAX_RESPONSE_BYTES: usize = 262_144;
 
 #[derive(Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -110,6 +111,14 @@ pub async fn stream_chat(
         while let Some(event) = s.next().await {
             match event {
                 Ok(crate::openrouter::StreamEvent::Delta(delta)) => {
+                    if content.len() + delta.len() > MAX_RESPONSE_BYTES {
+                        let _ = tx
+                            .send(Ok(sse_frame(&SsePayload::Error {
+                                message: "Assistant response exceeded maximum length",
+                            })))
+                            .await;
+                        return;
+                    }
                     content.push_str(&delta);
                     if tx
                         .send(Ok(sse_frame(&SsePayload::Delta { content: &delta })))

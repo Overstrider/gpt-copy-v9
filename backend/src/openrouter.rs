@@ -7,6 +7,7 @@ use std::time::Duration;
 use crate::error::AppError;
 
 const MAX_SSE_LINE_BYTES: usize = 1_048_576;
+const MAX_OPENROUTER_OUTPUT_TOKENS: u32 = 4_096;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
@@ -54,6 +55,7 @@ struct OpenRouterRequest<'a> {
     model: &'a str,
     messages: &'a [ChatMessage],
     stream: bool,
+    max_tokens: u32,
 }
 
 #[async_trait]
@@ -69,6 +71,7 @@ impl OpenRouterClient for HttpOpenRouterClient {
             model,
             messages: &messages,
             stream: true,
+            max_tokens: MAX_OPENROUTER_OUTPUT_TOKENS,
         };
 
         let response = self

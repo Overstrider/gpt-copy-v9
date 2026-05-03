@@ -4,7 +4,9 @@ use std::sync::Arc;
 
 use axum::http::{
     HeaderValue, StatusCode,
-    header::{AUTHORIZATION, ORIGIN},
+    header::{
+        ACCESS_CONTROL_ALLOW_CREDENTIALS, ACCESS_CONTROL_ALLOW_HEADERS, AUTHORIZATION, ORIGIN, VARY,
+    },
 };
 use axum_test::TestServer;
 use gpt_copy_v9::openrouter::FakeOpenRouterClient;
@@ -23,6 +25,8 @@ async fn api_routes_require_bearer_token_when_configured() {
 
     let missing_auth = server.get("/api/conversations").await;
     missing_auth.assert_status(StatusCode::UNAUTHORIZED);
+    let body: serde_json::Value = missing_auth.json();
+    assert_eq!(body["message"], "Unauthorized");
 
     server.add_header(AUTHORIZATION, HeaderValue::from_static("Bearer test-token"));
     let authorized = server.get("/api/conversations").await;
@@ -52,4 +56,25 @@ async fn cors_preflight_allows_json_and_authorization_headers() {
         .await;
 
     response.assert_status_ok();
+    let headers = response.headers();
+    let allow_headers = headers
+        .get(ACCESS_CONTROL_ALLOW_HEADERS)
+        .expect("access-control-allow-headers")
+        .to_str()
+        .unwrap()
+        .to_ascii_lowercase();
+    assert!(allow_headers.contains("content-type"));
+    assert!(allow_headers.contains("authorization"));
+
+    if let Some(credentials) = headers.get(ACCESS_CONTROL_ALLOW_CREDENTIALS) {
+        assert_eq!(credentials.to_str().unwrap(), "false");
+    }
+
+    let vary = headers
+        .get(VARY)
+        .expect("vary")
+        .to_str()
+        .unwrap()
+        .to_ascii_lowercase();
+    assert!(vary.split(',').any(|part| part.trim() == "origin"));
 }
