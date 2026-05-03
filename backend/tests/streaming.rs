@@ -173,7 +173,5 @@ async fn test_stream_error_is_sanitized_and_does_not_persist_partial_assistant()
     msgs_resp.assert_status_ok();
     let msgs: serde_json::Value = msgs_resp.json();
     let arr = msgs.as_array().unwrap();
-    assert_eq!(arr.len(), 1);
-    assert_eq!(arr[0]["role"], "user");
-    assert_eq!(arr[0]["content"], "Hello");
+    assert_eq!(arr.len(), 0);
 }

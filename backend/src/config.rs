@@ -1,6 +1,7 @@
 use std::env;
+use std::fmt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Config {
     pub database_url: String,
     pub openrouter_api_key: String,
@@ -8,6 +9,19 @@ pub struct Config {
     pub host: String,
     pub port: u16,
     pub frontend_origin: String,
+}
+
+impl fmt::Debug for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Config")
+            .field("database_url", &self.database_url)
+            .field("openrouter_api_key", &"[REDACTED]")
+            .field("openrouter_model", &self.openrouter_model)
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("frontend_origin", &self.frontend_origin)
+            .finish()
+    }
 }
 
 impl Config {

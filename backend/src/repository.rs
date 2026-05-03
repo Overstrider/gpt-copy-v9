@@ -68,10 +68,6 @@ pub async fn update_conversation(
 
 pub async fn delete_conversation(pool: &SqlitePool, id: &str) -> AppResult<()> {
     get_conversation(pool, id).await?;
-    sqlx::query("DELETE FROM messages WHERE conversation_id = ?")
-        .bind(id)
-        .execute(pool)
-        .await?;
     sqlx::query("DELETE FROM conversations WHERE id = ?")
         .bind(id)
         .execute(pool)
@@ -116,6 +112,48 @@ pub async fn create_message(
         .execute(pool)
         .await;
     get_message(pool, conversation_id, &id).await
+}
+
+pub async fn create_user_assistant_message_pair(
+    pool: &SqlitePool,
+    conversation_id: &str,
+    user_content: &str,
+    assistant_content: &str,
+) -> AppResult<()> {
+    let user_id = Uuid::new_v4().to_string();
+    let assistant_id = Uuid::new_v4().to_string();
+    let user_created_at = Utc::now();
+    let assistant_created_at = Utc::now();
+
+    let mut tx = pool.begin().await?;
+    sqlx::query(
+        "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(&user_id)
+    .bind(conversation_id)
+    .bind("user")
+    .bind(user_content)
+    .bind(user_created_at)
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(
+        "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(&assistant_id)
+    .bind(conversation_id)
+    .bind("assistant")
+    .bind(assistant_content)
+    .bind(assistant_created_at)
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query("UPDATE conversations SET updated_at = ? WHERE id = ?")
+        .bind(assistant_created_at)
+        .bind(conversation_id)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+
+    Ok(())
 }
 
 pub async fn get_message(

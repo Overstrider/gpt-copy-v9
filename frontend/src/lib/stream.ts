@@ -48,7 +48,10 @@ export async function streamChat(
 
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    if (done) {
+      callbacks.onDone();
+      break;
+    }
     buffer += decoder.decode(value, { stream: true });
 
     const lines = buffer.split("\n");

@@ -49,11 +49,6 @@ pub async fn stream_chat(
         .await
         .map_err(|e| AppError::OpenRouter(e.to_string()))?;
 
-    // Persist only after the upstream stream is confirmed open.
-    let _user_msg =
-        crate::repository::create_message(&state.db, &conversation_id, "user", &body.content)
-            .await?;
-
     use futures_util::StreamExt;
     use std::sync::{Arc, Mutex};
 
@@ -87,12 +82,12 @@ pub async fn stream_chat(
     let db2 = db.clone();
     let conv_id2 = conv_id.clone();
     let buf_final = buffer.clone();
+    let user_content = body.content.clone();
 
     tokio::spawn(async move {
         use futures_util::StreamExt;
         let mut s = Box::pin(sse_stream);
         let mut completed = false;
-        let mut client_connected = true;
         while let Some(item) = s.next().await {
             let (is_done, is_error) = item
                 .as_ref()
@@ -103,24 +98,25 @@ pub async fn stream_chat(
                     )
                 })
                 .unwrap_or((false, false));
-            if tx.send(item).await.is_err() {
-                client_connected = false;
-                break;
-            }
             if is_done {
                 completed = true;
+            }
+            if tx.send(item).await.is_err() {
                 break;
             }
-            if is_error {
+            if is_done || is_error {
                 break;
             }
         }
-        if completed && client_connected {
+        if completed {
             let content = buf_final.lock().unwrap().clone();
-            if !content.is_empty() {
-                let _ =
-                    crate::repository::create_message(&db2, &conv_id2, "assistant", &content).await;
-            }
+            let _ = crate::repository::create_user_assistant_message_pair(
+                &db2,
+                &conv_id2,
+                &user_content,
+                &content,
+            )
+            .await;
         }
     });
 
