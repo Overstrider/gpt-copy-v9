@@ -1,5 +1,5 @@
 import { StreamEvent, StreamEventSchema } from "./schemas";
-import { API_BASE_URL } from "./config";
+import { API_AUTH_HEADERS, API_BASE_URL } from "./config";
 
 export type StreamCallbacks = {
   onDelta: (content: string) => void;
@@ -17,7 +17,7 @@ export async function streamChat(
     `${API_BASE_URL}/api/conversations/${conversationId}/stream`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...API_AUTH_HEADERS },
       body: JSON.stringify({ content }),
       signal,
     }

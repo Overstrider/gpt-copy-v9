@@ -13,7 +13,7 @@ async fn main() -> anyhow::Result<()> {
 
     let config = gpt_copy_v9::config::Config::from_env();
 
-    tracing::info!("Connecting to database: {}", config.database_url);
+    tracing::info!("Connecting to database");
     let db = gpt_copy_v9::db::connect(&config.database_url).await?;
 
     let addr = format!("{}:{}", config.host, config.port);

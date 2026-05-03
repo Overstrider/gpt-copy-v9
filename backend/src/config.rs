@@ -9,6 +9,7 @@ pub struct Config {
     pub host: String,
     pub port: u16,
     pub frontend_origin: String,
+    pub api_auth_token: Option<String>,
 }
 
 impl fmt::Debug for Config {
@@ -20,6 +21,10 @@ impl fmt::Debug for Config {
             .field("host", &self.host)
             .field("port", &self.port)
             .field("frontend_origin", &self.frontend_origin)
+            .field(
+                "api_auth_token",
+                &self.api_auth_token.as_ref().map(|_| "[REDACTED]"),
+            )
             .finish()
     }
 }
@@ -42,6 +47,11 @@ impl Config {
             .unwrap_or(3001);
         let frontend_origin =
             env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
+        let api_auth_token = env::var("API_AUTH_TOKEN")
+            .expect("API_AUTH_TOKEN must be set (set it in .env or the environment)");
+        if api_auth_token.trim().is_empty() {
+            panic!("API_AUTH_TOKEN must not be empty");
+        }
 
         Config {
             database_url,
@@ -50,6 +60,7 @@ impl Config {
             host,
             port,
             frontend_origin,
+            api_auth_token: Some(api_auth_token),
         }
     }
 
@@ -62,6 +73,7 @@ impl Config {
             host: "127.0.0.1".to_string(),
             port: 3001,
             frontend_origin: "http://localhost:3000".to_string(),
+            api_auth_token: None,
         }
     }
 }

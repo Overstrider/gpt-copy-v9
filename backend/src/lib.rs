@@ -12,15 +12,24 @@ use std::sync::Arc;
 
 use axum::{
     Router,
-    http::HeaderValue,
+    extract::{Request, State},
+    http::{
+        HeaderValue, Method,
+        header::{AUTHORIZATION, CONTENT_TYPE},
+    },
+    middleware::{self, Next},
+    response::Response,
     routing::{delete, get, post},
 };
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 use config::Config;
+use error::{AppError, AppResult};
 use openrouter::HttpOpenRouterClient;
 use state::{AppState, StreamRegistry};
+
+const MAX_CONCURRENT_STREAMS: usize = 8;
 
 pub async fn build_app(config: Config, db: sqlx::SqlitePool) -> Router {
     let openrouter: Arc<dyn openrouter::OpenRouterClient + Send + Sync> =
@@ -41,16 +50,15 @@ pub async fn build_app_with_client(
         db,
         config,
         openrouter,
-        stream_registry: StreamRegistry::default(),
+        stream_registry: StreamRegistry::with_max_concurrent(MAX_CONCURRENT_STREAMS),
     };
 
     let cors = CorsLayer::new()
         .allow_origin(frontend_origin)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION]);
 
-    Router::new()
-        .route("/health", get(routes::health::health_handler))
+    let api_routes = Router::new()
         .route(
             "/api/conversations",
             get(routes::conversations::list_conversations)
@@ -74,7 +82,39 @@ pub async fn build_app_with_client(
             "/api/conversations/:conversation_id/stream",
             post(routes::chat::stream_chat),
         )
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            require_api_auth,
+        ));
+
+    Router::new()
+        .route("/health", get(routes::health::health_handler))
+        .merge(api_routes)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
+}
+
+async fn require_api_auth(
+    State(state): State<AppState>,
+    req: Request,
+    next: Next,
+) -> AppResult<Response> {
+    let Some(expected_token) = state.config.api_auth_token.as_deref() else {
+        return Ok(next.run(req).await);
+    };
+
+    let provided_token = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "));
+
+    if provided_token != Some(expected_token) {
+        return Err(AppError::Unauthorized(
+            "Invalid or missing API token".to_string(),
+        ));
+    }
+
+    Ok(next.run(req).await)
 }

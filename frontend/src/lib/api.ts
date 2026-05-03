@@ -7,7 +7,7 @@ import {
   MessageListSchema,
   MessageSchema,
 } from "./schemas";
-import { API_BASE_URL } from "./config";
+import { API_AUTH_HEADERS, API_BASE_URL } from "./config";
 
 async function fetchJson<T>(
   schema: z.ZodType<T>,
@@ -15,7 +15,7 @@ async function fetchJson<T>(
   init?: RequestInit
 ): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${input}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: { "Content-Type": "application/json", ...API_AUTH_HEADERS, ...init?.headers },
     ...init,
   });
   if (!res.ok) {
@@ -62,6 +62,7 @@ export async function updateConversation(
 export async function deleteConversation(id: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/conversations/${id}`, {
     method: "DELETE",
+    headers: API_AUTH_HEADERS,
   });
   if (!res.ok && res.status !== 204) {
     throw new Error(`HTTP ${res.status}`);
@@ -97,7 +98,7 @@ export async function deleteMessage(
 ): Promise<void> {
   const res = await fetch(
     `${API_BASE_URL}/api/conversations/${conversationId}/messages/${messageId}`,
-    { method: "DELETE" }
+    { method: "DELETE", headers: API_AUTH_HEADERS }
   );
   if (!res.ok && res.status !== 204) {
     throw new Error(`HTTP ${res.status}`);

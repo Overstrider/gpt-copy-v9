@@ -36,15 +36,14 @@ pub async fn stream_chat(
     // Ensure conversation exists
     crate::repository::get_conversation(&state.db, &conversation_id).await?;
 
-    if !state.stream_registry.try_acquire(&conversation_id).await {
-        return Err(AppError::Conflict(
-            "A stream is already in progress for this conversation".to_string(),
-        ));
-    }
-    let stream_guard = StreamReleaseGuard {
-        registry: state.stream_registry.clone(),
-        conversation_id: conversation_id.clone(),
-    };
+    let stream_guard = state
+        .stream_registry
+        .try_acquire(&conversation_id)
+        .ok_or_else(|| {
+            AppError::Conflict(
+                "A stream is already in progress or stream capacity is full".to_string(),
+            )
+        })?;
 
     // Get conversation history
     let history = match crate::repository::list_messages(&state.db, &conversation_id).await {
@@ -57,9 +56,19 @@ pub async fn stream_chat(
     let history_start = history.len().saturating_sub(MAX_CONTEXT_MESSAGES);
     let mut messages: Vec<crate::openrouter::ChatMessage> = history[history_start..]
         .iter()
-        .map(|m| crate::openrouter::ChatMessage {
-            role: m.role.clone(),
-            content: m.content.clone(),
+        .filter_map(|m| match m.role.as_str() {
+            "user" | "assistant" => Some(crate::openrouter::ChatMessage {
+                role: m.role.clone(),
+                content: m.content.clone(),
+            }),
+            other => {
+                tracing::warn!(
+                    message_id = %m.id,
+                    role = %other,
+                    "Skipping message with unsupported role in OpenRouter history"
+                );
+                None
+            }
         })
         .collect();
     messages.push(crate::openrouter::ChatMessage {
@@ -158,6 +167,7 @@ pub async fn stream_chat(
         .header("Content-Type", "text/event-stream")
         .header("Cache-Control", "no-cache")
         .header("Connection", "keep-alive")
+        .header("X-Accel-Buffering", "no")
         .body(body)
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -169,26 +179,14 @@ fn stream_error_message(error: &AppError) -> &'static str {
         AppError::OpenRouter(_) => "Upstream model service error",
         AppError::Database(_) => "A database error occurred",
         AppError::Internal(_) => "An internal server error occurred",
-        AppError::NotFound(_) | AppError::BadRequest(_) | AppError::Conflict(_) => "Stream error",
+        AppError::Unauthorized(_)
+        | AppError::NotFound(_)
+        | AppError::BadRequest(_)
+        | AppError::Conflict(_) => "Stream error",
     }
 }
 
 fn sse_frame(payload: &SsePayload<'_>) -> String {
     let json = serde_json::to_string(payload).expect("serialize SSE payload");
     format!("data: {json}\n\n")
-}
-
-struct StreamReleaseGuard {
-    registry: crate::state::StreamRegistry,
-    conversation_id: String,
-}
-
-impl Drop for StreamReleaseGuard {
-    fn drop(&mut self) {
-        let registry = self.registry.clone();
-        let conversation_id = self.conversation_id.clone();
-        tokio::spawn(async move {
-            registry.release(&conversation_id).await;
-        });
-    }
 }
