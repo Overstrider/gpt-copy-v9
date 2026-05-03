@@ -1,4 +1,4 @@
-﻿# Phase 5: Execution (Dev)
+# Phase 5: Execution (Dev)
 
 Claude permission invariant: every Claude CLI session or subagent spawn controlled by codedungeon MUST include `--dangerously-skip-permissions`. This is mandatory and has no opt-out.
 
@@ -48,7 +48,7 @@ For each repo in execution order:
    - If it does not exist, STOP with error: "codedungeon-loop.md not found. Run `codedungeon install`."
 
 3. Announce to user:
-   > Spawning execution agent for **{repo}** ({lang}) â€” {N} tasks
+   > Spawning execution agent for **{repo}** ({lang}) — {N} tasks
 
 4. Spawn a `general-purpose` agent with **model: `claude-sonnet-4-6`**:
 
@@ -56,8 +56,8 @@ For each repo in execution order:
    You are executing the codedungeon-loop for a single repo.
 
    Read the full codedungeon-loop instructions from: {LOLDINIS_LOOP_PATH}
-   (This is an ABSOLUTE path â€” read it with the Read tool before doing anything else.)
-   If you cannot read the file above, STOP with error â€” do NOT improvise.
+   (This is an ABSOLUTE path — read it with the Read tool before doing anything else.)
+   If you cannot read the file above, STOP with error — do NOT improvise.
 
    Execute with these parameters:
    TASK_DIR = {TASK_DIR}
@@ -66,19 +66,19 @@ For each repo in execution order:
    - Validate input (Step 0)
    - Branch setup (Main Loop Step 1)
    - Orchestrator loop: dispatch each task
-     - {lang}-specialist (Plan mode) â†’ general-purpose agent (exec) â†’ {lang}-specialist (Review mode)
+     - {lang}-specialist (Plan mode) → general-purpose agent (exec) → {lang}-specialist (Review mode)
    - Commit per task
    - Push, create PR (with context from MASTER.md)
-   - Run /code-review for PR review (Main Loop Step 5) â€” see REVIEW PROTOCOL below
-   - Fix issues if needed (loop continues until APPROVED â€” no cycle cap stops the loop)
+   - Run /code-review for PR review (Main Loop Step 5) — see REVIEW PROTOCOL below
+   - Fix issues if needed (loop continues until APPROVED — no cycle cap stops the loop)
 
-   ## REVIEW PROTOCOL â€” /code-review (adversarial, claude-sonnet-4-6 4.7 fanout)
+   ## REVIEW PROTOCOL — /code-review (adversarial, claude-sonnet-4-6 4.7 fanout)
    For Main Loop Step 5 (PR review), you MUST read and follow the full /code-review
    protocol from: {project_root}/.codedungeon/commands/code-review.md
 
    /code-review runs a multi-persona adversarial fanout (Saboteur + New Hire + Security Auditor
    + Spec Enforcer on claude-sonnet-4-6 4.7) followed by per-finding claude-sonnet-4-6 Validators and a stack-specific
-   {LANG}-specialist pass. It always produces a verdict (APPROVED or CHANGES_REQUESTED) â€” there
+   {LANG}-specialist pass. It always produces a verdict (APPROVED or CHANGES_REQUESTED) — there
    is NO "skip" case.
 
    Review cycles are capped at 9. Cycles 1-3 use full adversarial mode. Cycles 4-9 use reduced
@@ -90,8 +90,8 @@ For each repo in execution order:
    available because it is pure Claude Code.
 
    ## NEVER SKIP (verified after you complete)
-   - NEVER skip Phase C (specialist review) for any task â€” the orchestrator will check that review.md contains an APPROVED verdict for every [x] task
-   - NEVER skip Main Loop Step 5 (/code-review) â€” the orchestrator will verify a review comment exists on the PR via `gh`
+   - NEVER skip Phase C (specialist review) for any task — the orchestrator will check that review.md contains an APPROVED verdict for every [x] task
+   - NEVER skip Main Loop Step 5 (/code-review) — the orchestrator will verify a review comment exists on the PR via `gh`
    - NEVER mark a task [x] without Phase C approval
    - NEVER report completion without providing ALL of these fields in your final report
 
@@ -144,15 +144,15 @@ For each repo in execution order:
       - If no PR: log ERROR "No PR found for {repo}. Phase 5 incomplete."
       - Do NOT proceed to Phase 6 for this repo.
 
-   c. **Verify adversarial review was posted** (exact title match â€” /code-review always posts this):
+   c. **Verify adversarial review was posted** (exact title match — /code-review always posts this):
       ```bash
       cd {REPO_DIR} && gh pr view {PR_NUMBER} --comments --json comments -q '[.comments[] | select(.body | test("Claude Adversarial Code Review"))] | length'
       ```
-      - If count = 0: log ERROR "No adversarial review comment found on PR #{PR_NUMBER}. /code-review was not invoked â€” Phase 5 incomplete."
+      - If count = 0: log ERROR "No adversarial review comment found on PR #{PR_NUMBER}. /code-review was not invoked — Phase 5 incomplete."
       - /code-review has no skip path, so zero comments indicates a pipeline break.
 
    d. Report verification result:
-      > **{repo}** verified: PR #{PR_NUMBER} â€” Review: {REVIEW_VERDICT}
+      > **{repo}** verified: PR #{PR_NUMBER} — Review: {REVIEW_VERDICT}
 
 6. Move to next repo.
 
@@ -182,6 +182,6 @@ Use `codedungeon phase skip 5 --reason "..."` or `... fail 5 --reason "..."` for
 
 ## Tool discipline
 
-Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) â€” workers own those.
+Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) — workers own those.
 
 Thinking budget inherited from `PHASE_THINKING[5]` in the orchestrator (`main-quest.md`). Model tier via `codedungeon config model <reasoning|fast>` (Sprint 7).

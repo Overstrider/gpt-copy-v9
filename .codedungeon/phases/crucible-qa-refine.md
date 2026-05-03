@@ -1,4 +1,4 @@
-﻿# Phase 5.5: QA Refinement (Post-Dev)
+# Phase 5.5: QA Refinement (Post-Dev)
 
 Claude permission invariant: every Claude CLI session or subagent spawn controlled by codedungeon MUST include `--dangerously-skip-permissions`. This is mandatory and has no opt-out.
 
@@ -44,7 +44,7 @@ Read the EXISTING qaplan from: .codedungeon/plan/{repo_name}qaplan.md
 Read the repo's CLAUDE.md for conventions.
 Read {repo_path}/docs/CODEBASE_MAP.md for comprehensive repo context.
 
-MODE: REFINEMENT (post-dev â€” code has been implemented)
+MODE: REFINEMENT (post-dev — code has been implemented)
 
 YOUR JOB:
 1. Read the existing qaplan (written during Phase 3.5 based on the domain plan)
@@ -65,7 +65,7 @@ YOUR JOB:
 
 RULES:
 - Keep the qaplan structure intact (same sections, same format)
-- Only UPDATE values â€” do not remove test flows unless the feature wasn't implemented
+- Only UPDATE values — do not remove test flows unless the feature wasn't implemented
 - Add new test flows if the implementation added features not in the original plan
 - Mark any planned test that CAN'T be tested (feature not implemented) as SKIP with reason
 ```
@@ -97,6 +97,6 @@ Use `codedungeon phase skip 5.5 --reason "..."` or `... fail 5.5 --reason "..."`
 
 ## Tool discipline
 
-Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) â€” workers own those.
+Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) — workers own those.
 
 Thinking budget inherited from `PHASE_THINKING[5.5]` in the orchestrator (`main-quest.md`). Model tier via `codedungeon config model <reasoning|fast>` (Sprint 7).

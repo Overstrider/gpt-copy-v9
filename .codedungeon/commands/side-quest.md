@@ -1,4 +1,4 @@
-﻿# Side Quest
+# Side Quest
 
 ## Project Rules Gate
 
@@ -22,7 +22,7 @@ Deterministic completion gates:
 - Run verification with `./.claude/bin/codedungeon qa run --phase 6 --fresh`.
 - Run `./.claude/bin/codedungeon run finalize`; READY_FOR_USER_REVIEW can only come from `codedungeon run finalize`.
 
-Lightweight pipeline. Reads a Claude Code plan (`.codedungeon/plans/*.md`), splits into tasks, runs the ralph loop (codedungeon-loop), runs adversarial code review, ends with approved PR. No architect, no QA, no tests, no report â€” just plan â†’ split â†’ execute â†’ review â†’ PR.
+Lightweight pipeline. Reads a Claude Code plan (`.codedungeon/plans/*.md`), splits into tasks, runs the ralph loop (codedungeon-loop), runs adversarial code review, ends with approved PR. No architect, no QA, no tests, no report — just plan → split → execute → review → PR.
 
 **Deterministic mechanics (branch guard, plan parsing, PR creation, fix-task generation) delegated to `codedungeon`. Only LLM work (task decomposition, specialist plan/exec/review, persona fanout) is inline.**
 
@@ -36,11 +36,11 @@ Every `git commit` / `git push` preceded by:
 codedungeon git guard --repo "$REPO_DIR"
 ```
 
-Exits 1 if protected â†’ HARD STOP.
+Exits 1 if protected → HARD STOP.
 
 ## Parameters
 
-- `$ARGUMENTS` â€” optional path to a specific plan file. If omitted, uses most recently modified `.codedungeon/plans/*.md`.
+- `$ARGUMENTS` — optional path to a specific plan file. If omitted, uses most recently modified `.codedungeon/plans/*.md`.
 
 ## Prerequisites
 
@@ -56,18 +56,18 @@ Exits 1 if protected â†’ HARD STOP.
 
 ```
 SIDE_QUEST (single orchestrator)
-  â”‚
-  â”œâ”€ Step 0: Resolve plan source (.codedungeon/plans/*.md)
-  â”œâ”€ Step 1: Discover repo lang/stack
-  â”œâ”€ Step 2: Decompose plan â†’ PLAN.md + TASK-NNN.md files
-  â”‚
-  â””â”€ Step 3: Spawn codedungeon-loop (ralph loop)
-       â”œâ”€ Branch setup
-       â”œâ”€ Per task: specialist plan â†’ exec â†’ specialist review
-       â”œâ”€ Commit + push + PR
-       â””â”€ /code-review adversarial fanout
-            â”œâ”€ APPROVED â†’ DONE
-            â””â”€ CHANGES_REQUESTED â†’ fix tasks â†’ re-enter loop
+  │
+  ├─ Step 0: Resolve plan source (.codedungeon/plans/*.md)
+  ├─ Step 1: Discover repo lang/stack
+  ├─ Step 2: Decompose plan → PLAN.md + TASK-NNN.md files
+  │
+  └─ Step 3: Spawn codedungeon-loop (ralph loop)
+       ├─ Branch setup
+       ├─ Per task: specialist plan → exec → specialist review
+       ├─ Commit + push + PR
+       └─ /code-review adversarial fanout
+            ├─ APPROVED → DONE
+            └─ CHANGES_REQUESTED → fix tasks → re-enter loop
 ```
 
 ---
@@ -98,7 +98,7 @@ LANG=$(echo "$DISCOVER" | jq -r '.repo_map[0].lang // empty')
 REPO_NAME=$(echo "$DISCOVER" | jq -r '.repo_map[0].name // empty')
 ```
 
-Fallback if `codedungeon repo discover` fails â€” check manifest files:
+Fallback if `codedungeon repo discover` fails — check manifest files:
 
 | File | Lang |
 |------|------|
@@ -113,7 +113,7 @@ Fallback if `codedungeon repo discover` fails â€” check manifest files:
 
 `REPO_DIR` = project root (cwd or nearest `.git` ancestor).
 
-If `REPO_NAME` empty â†’ use basename of `REPO_DIR`.
+If `REPO_NAME` empty → use basename of `REPO_DIR`.
 
 Before task decomposition or implementation, verify PR readiness:
 
@@ -136,9 +136,9 @@ mkdir -p .codedungeon/tasks/side-quest
 Read the Claude Code plan file content. Decompose into discrete implementation tasks.
 
 **Decomposition rules:**
-1. Each logical change unit â†’ one task (file creation, API endpoint, refactor, config change)
-2. Target 200â€“500 tokens per task file
-3. Max 5 acceptance criteria per task â€” split if more
+1. Each logical change unit → one task (file creation, API endpoint, refactor, config change)
+2. Target 200–500 tokens per task file
+3. Max 5 acceptance criteria per task — split if more
 4. Merge trivially-coupled steps (e.g., create handler + register route) into one task
 5. Tasks numbered `TASK-001`, `TASK-002`, ... in execution order from plan
 6. `depends:` references earlier TASK-xxx when ordering matters
@@ -157,9 +157,9 @@ Read the Claude Code plan file content. Decompose into discrete implementation t
 ...
 ```
 
-Headers `# Plan:`, `# Repo:`, `# Lang:` are **required** â€” `codedungeon plan meta` parses them.
+Headers `# Plan:`, `# Repo:`, `# Lang:` are **required** — `codedungeon plan meta` parses them.
 
-Task lines `- [ ] TASK-NNN <title>` are **required** â€” `codedungeon plan meta` counts them.
+Task lines `- [ ] TASK-NNN <title>` are **required** — `codedungeon plan meta` counts them.
 
 **Write `.codedungeon/tasks/side-quest/TASK-NNN.md`** per task:
 
@@ -173,10 +173,10 @@ priority: medium
 estimated_complexity: <low|medium|high>
 
 ## Context
-<2-3 lines â€” what exists today, what's missing, from the plan>
+<2-3 lines — what exists today, what's missing, from the plan>
 
 ## Detailed Requirements
-<3-7 bullet steps â€” concrete actions, not vague goals>
+<3-7 bullet steps — concrete actions, not vague goals>
 
 ## Files
 <files to create or modify, with paths>
@@ -206,7 +206,7 @@ LOOP_PATH=".codedungeon/commands/codedungeon-loop.md"
 [ -f "$LOOP_PATH" ] || LOOP_PATH=""
 ```
 
-If loop instructions not found â†’ HARD STOP: "codedungeon-loop.md not found. Run `codedungeon install`."
+If loop instructions not found → HARD STOP: "codedungeon-loop.md not found. Run `codedungeon install`."
 
 Spawn a **single `general-purpose` agent** (model: claude-sonnet-4-6) with this prompt:
 
@@ -217,7 +217,7 @@ Read the full codedungeon-loop instructions from: {LOOP_PATH}
 Execute with these parameters:
   TASK_DIR = .codedungeon/tasks/side-quest/
 
-Follow the codedungeon-loop protocol exactly â€” branch setup, per-task specialist
+Follow the codedungeon-loop protocol exactly — branch setup, per-task specialist
 plan/exec/review cycle, commit, push, PR creation, /code-review adversarial
 fanout, and fix loop on CHANGES_REQUESTED.
 
@@ -271,17 +271,17 @@ Next
 
 | Error | Action |
 |-------|--------|
-| No plan file found | STOP â€” "No plan found. Use Claude Code plan mode first, then /side-quest." |
+| No plan file found | STOP — "No plan found. Use Claude Code plan mode first, then /side-quest." |
 | Protected branch detected | HARD STOP (codedungeon git guard) |
 | `gh pr create` fails | HARD STOP (via codedungeon-loop) |
 | 9 adversarial cycles without APPROVED | MAX_CYCLES_REACHED, exit 3, human triage |
 | Task stuck 9 worker iterations | Mark `[!]` blocked, continue to next task |
-| codedungeon-loop.md not found | STOP â€” "Run codedungeon install" |
-| `codedungeon plan meta` returns invalid | STOP â€” verify PLAN.md has required headers |
+| codedungeon-loop.md not found | STOP — "Run codedungeon install" |
+| `codedungeon plan meta` returns invalid | STOP — verify PLAN.md has required headers |
 
 ## Resume
 
 If `/side-quest` is re-invoked and `.codedungeon/tasks/side-quest/PLAN.md` exists with some `[x]` tasks:
 - Skip Step 2 (tasks already exist)
-- Re-enter Step 3 â€” codedungeon-loop picks up from first `[ ]` task
+- Re-enter Step 3 — codedungeon-loop picks up from first `[ ]` task
 - To start fresh: delete `.codedungeon/tasks/side-quest/` first

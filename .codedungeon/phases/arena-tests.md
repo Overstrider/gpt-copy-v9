@@ -1,4 +1,4 @@
-﻿# Phase 6: Execution (Tests)
+# Phase 6: Execution (Tests)
 
 Claude permission invariant: every Claude CLI session or subagent spawn controlled by codedungeon MUST include `--dangerously-skip-permissions`. This is mandatory and has no opt-out.
 
@@ -26,7 +26,7 @@ Claude permission invariant: every Claude CLI session or subagent spawn controll
 For each repo in execution order:
 1. Read the repo's PLAN.md
 2. Check if `## Test Tasks` section exists
-3. If no test tasks: Log "No test tasks for {repo} â€” skipping test phase." â†’ continue to next repo
+3. If no test tasks: Log "No test tasks for {repo} — skipping test phase." → continue to next repo
 
 #### Step 6.2: Execute Test Loop per Repo
 
@@ -42,7 +42,7 @@ For each repo that has `## Test Tasks` in PLAN.md:
    You are executing the codedungeon-test-loop for a single repo.
 
    Read the full codedungeon-test-loop instructions from: {resolved absolute path}
-   (This is an ABSOLUTE path â€” read it with the Read tool before doing anything else.)
+   (This is an ABSOLUTE path — read it with the Read tool before doing anything else.)
 
    Execute with these parameters:
    TASK_DIR = {TASK_DIR}
@@ -52,26 +52,26 @@ For each repo that has `## Test Tasks` in PLAN.md:
    Follow the codedungeon-test-loop protocol exactly:
    - Step 0: Validate input
    - Step 1: Start the project (phoenix-project-startup agent)
-   - Step 2: Integration tests (optional â€” skip if no test infra)
+   - Step 2: Integration tests (optional — skip if no test infra)
    - Step 3: API curl tests (backend repos only)
    - Step 4: E2E tests (frontend repos only)
-   - Step 5: All tests passed â†’ commit test files, push, report
+   - Step 5: All tests passed → commit test files, push, report
 
    If startup-fix or code-fix tasks are generated:
    - The test loop handles re-entering the dev loop automatically
    - Max 9 total cycles
 
    ## NEVER SKIP (verified after you complete)
-   - NEVER skip Step 1 (project startup) â€” you must attempt to start the project
-   - NEVER skip test execution if test tasks exist â€” run them even if you expect failures
+   - NEVER skip Step 1 (project startup) — you must attempt to start the project
+   - NEVER skip test execution if test tasks exist — run them even if you expect failures
    - NEVER report "no tests to run" if PLAN.md has a ## Test Tasks section with pending items
 
    ## Required Report Format
    Your FINAL message must include:
-   PROJECT_STARTED: {true | false â€” reason}
-   INTEGRATION_TESTS: {N passed, N failed | SKIPPED â€” reason}
-   API_TESTS: {N passed, N failed | SKIPPED â€” reason}
-   E2E_TESTS: {N passed, N failed | SKIPPED â€” reason}
+   PROJECT_STARTED: {true | false — reason}
+   INTEGRATION_TESTS: {N passed, N failed | SKIPPED — reason}
+   API_TESTS: {N passed, N failed | SKIPPED — reason}
+   E2E_TESTS: {N passed, N failed | SKIPPED — reason}
    CODE_FIXES_APPLIED: {N}
    UNRESOLVED_FAILURES: {N}
    ```
@@ -120,6 +120,6 @@ Use `codedungeon phase skip 6 --reason "..."` or `... fail 6 --reason "..."` for
 
 ## Tool discipline
 
-Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) â€” workers own those.
+Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) — workers own those.
 
 Thinking budget inherited from `PHASE_THINKING[6]` in the orchestrator (`main-quest.md`). Model tier via `codedungeon config model <reasoning|fast>` (Sprint 7).

@@ -1,4 +1,4 @@
-﻿# Phase 2': Consolidated Domain + Specialist Planning
+# Phase 2': Consolidated Domain + Specialist Planning
 
 Claude permission invariant: every Claude CLI session or subagent spawn controlled by codedungeon MUST include `--dangerously-skip-permissions`. This is mandatory and has no opt-out.
 
@@ -6,7 +6,7 @@ Claude permission invariant: every Claude CLI session or subagent spawn controll
 
 ## Tools
 tools: Task, TodoWrite, Read
-(orchestrator â€” no Write/Edit)
+(orchestrator — no Write/Edit)
 
 ## Inputs
 - `.codedungeon/plan/pipeline-state.md` (config, repo map, env vars)
@@ -16,8 +16,8 @@ tools: Task, TodoWrite, Read
 - Per-repo CLAUDE.md
 
 ## Outputs
-- Domain plan per repo: `.codedungeon/plan/{repo_name}plan.md` (single-pass â€” no separate `#### {lang}` enrichment phase; the consolidated agent writes inline `#### {lang}` subsections in the same file)
-- `.codedungeon/state/phase-2prime-output.md` (canonical handoff, â‰¤ 500 tokens)
+- Domain plan per repo: `.codedungeon/plan/{repo_name}plan.md` (single-pass — no separate `#### {lang}` enrichment phase; the consolidated agent writes inline `#### {lang}` subsections in the same file)
+- `.codedungeon/state/phase-2prime-output.md` (canonical handoff, ≤ 500 tokens)
 - `.codedungeon/plan/pipeline-state.md` row: `| 2' | DONE | {artifact list} | {notes} |`
 
 ---
@@ -26,7 +26,7 @@ tools: Task, TodoWrite, Read
 
 **Goal**: Spawn the single consolidated skill per affected repo, all in PARALLEL. Replaces Phase 2 + Phase 3. One pass produces the fully-enriched plan.
 
-#### Repo â†’ skill mapping
+#### Repo → skill mapping
 
 | repo lang/framework | skill |
 |---|---|
@@ -38,7 +38,7 @@ For a repo whose stack has no consolidated skill yet (e.g., go / python / elixir
 
 #### Step 2'.1: Read arcplan.md
 
-Read `.codedungeon/plan/arcplan.md`. Identify affected repos from `## meta â†’ repos:`.
+Read `.codedungeon/plan/arcplan.md`. Identify affected repos from `## meta → repos:`.
 
 #### Step 2'.2: Spawn consolidated skills in PARALLEL
 
@@ -61,14 +61,14 @@ MODE=plan
 PROJECT_MODE={project_mode}   # BOOTSTRAP | SINGLE | MULTI
 
 Read:
-- .codedungeon/plan/arcplan.md â†’ section `## repo:{repo_name}` + `## cross-repo`
+- .codedungeon/plan/arcplan.md → section `## repo:{repo_name}` + `## cross-repo`
 - .codedungeon/state/phase-1-output.md (canonical handoff)
 - {repo_path}/docs/CODEBASE_MAP.md (if exists)
 - {repo_path}/CLAUDE.md (if exists)
 
 YOUR JOB (plan mode, single-pass):
 1. Follow the plan workflow in SKILL.md.
-2. Read companion files on demand per the SKILL.md guidance â€” do NOT front-load them all.
+2. Read companion files on demand per the SKILL.md guidance — do NOT front-load them all.
 3. Write the fully-enriched plan to .codedungeon/plan/{repo_name}plan.md (domain structure + inline `#### {lang}` subsections per change).
 4. Final line of the file MUST be exactly: PLAN_COMPLETE: {repo_name}plan.md
 
@@ -139,6 +139,6 @@ Use `codedungeon phase skip 2' --reason "..."` or `... fail 2' --reason "..."` f
 
 ## Tool discipline
 
-Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) â€” workers own those.
+Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) — workers own those.
 
 Thinking budget inherited from `PHASE_THINKING[2']` in the orchestrator (`main-quest.md`). Model tier via `codedungeon config model <reasoning|fast>` (Sprint 7).

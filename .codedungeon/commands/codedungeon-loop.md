@@ -1,4 +1,4 @@
-﻿# Loldinis Loop
+# Loldinis Loop
 
 ## Project Rules Gate
 
@@ -36,14 +36,14 @@ Every `git commit` / `git push` preceded by:
 codedungeon git guard --repo "$REPO_DIR"
 ```
 
-Exits 1 if protected â†’ loop STOPs.
+Exits 1 if protected → loop STOPs.
 
 ## Non-negotiable steps (verified by orchestrator)
 
-1. **Phase C (specialist review)** â€” every task, every iteration. Verified: `review.md` exists with APPROVED verdict for every `[x]` task.
-2. **Main Loop Step 5 (adversarial review)** â€” after all tasks complete. Verified: `codedungeon git verify` returns `adv_review_count â‰¥ 1`.
-3. **PR creation** â€” before review. Verified: `codedungeon git pr` returns a number.
-4. **Final PR report** â€” every terminal path returns the standard CodeDungeon PR Report.
+1. **Phase C (specialist review)** — every task, every iteration. Verified: `review.md` exists with APPROVED verdict for every `[x]` task.
+2. **Main Loop Step 5 (adversarial review)** — after all tasks complete. Verified: `codedungeon git verify` returns `adv_review_count ≥ 1`.
+3. **PR creation** — before review. Verified: `codedungeon git pr` returns a number.
+4. **Final PR report** — every terminal path returns the standard CodeDungeon PR Report.
 
 Skipping any makes the run invalid.
 
@@ -74,12 +74,12 @@ If `Dockerfile` or `Containerfile` changed and `podman build` cannot run because
 
 ## Parameters
 
-- `$ARGUMENTS` â€” path to task dir (e.g. `.codedungeon/tasks/my-feature/backend/`).
+- `$ARGUMENTS` — path to task dir (e.g. `.codedungeon/tasks/my-feature/backend/`).
 
 ## Subagent spawn retry rule
 
-- Wait â‰¥60s before concluding a spawn failed.
-- Retry up to 2Ã— (backoff 1s â†’ 2s â†’ 4s).
+- Wait ≥60s before concluding a spawn failed.
+- Retry up to 2× (backoff 1s → 2s → 4s).
 - Verify tool access with a trivial Bash before claiming unavailability.
 - **Never** degrade to inline execution without exhausting retries.
 
@@ -98,20 +98,20 @@ If `gh auth status`, git repo validation, or `git remote get-url origin` fails, 
 ## Architecture
 
 ```
-MAIN LOOP (â‰¤9 adversarial cycles â€” HARD STOP)
-  â”‚
-  â”œâ”€ Branch setup
-  â”‚
-  â”œâ”€ ORCHESTRATOR LOOP â€” dispatches all pending [ ] tasks
-  â”‚    â”‚
-  â”‚    â””â”€ WORKER LOOP (one task): specialist plan â†’ general-purpose exec â†’ specialist review
-  â”‚       (max 9 per-task iterations â€” warn at 5, hard stop at 9)
-  â”‚
-  â”œâ”€ All tasks done â†’ commit + push + PR
-  â”‚
-  â””â”€ /code-review (adversarial claude-sonnet-4-6 4.7 fanout)
-       â”œâ”€ APPROVED â†’ DONE
-       â””â”€ CHANGES_REQUESTED â†’ `codedungeon plan append-fix-tasks` â†’ re-enter orchestrator
+MAIN LOOP (≤9 adversarial cycles — HARD STOP)
+  │
+  ├─ Branch setup
+  │
+  ├─ ORCHESTRATOR LOOP — dispatches all pending [ ] tasks
+  │    │
+  │    └─ WORKER LOOP (one task): specialist plan → general-purpose exec → specialist review
+  │       (max 9 per-task iterations — warn at 5, hard stop at 9)
+  │
+  ├─ All tasks done → commit + push + PR
+  │
+  └─ /code-review (adversarial claude-sonnet-4-6 4.7 fanout)
+       ├─ APPROVED → DONE
+       └─ CHANGES_REQUESTED → `codedungeon plan append-fix-tasks` → re-enter orchestrator
 ```
 
 ## Agent dispatch table
@@ -126,7 +126,7 @@ MAIN LOOP (â‰¤9 adversarial cycles â€” HARD STOP)
 | cpp    | agent `sentinel-reviewer-cpp`               | general-purpose       |
 | python | agent `sentinel-reviewer-python`            | general-purpose       |
 
-**Spawn prompt (skills â€” rust/nextjs/kotlin):**
+**Spawn prompt (skills — rust/nextjs/kotlin):**
 
 ```
 {CAVEMAN_ULTRA_BLOCK}
@@ -162,7 +162,7 @@ LANG=$(echo "$META"         | jq -r .lang)
 
 Resolve `REPO_DIR` via `codedungeon repo resolve "$REPO_NAME"`.
 
-Map `LANG` â†’ reviewer per dispatch table (`REVIEWER_SPAWN`).
+Map `LANG` → reviewer per dispatch table (`REVIEWER_SPAWN`).
 
 Branch: `BRANCH_NAME=feat/$(slug "$FEATURE_NAME")`.
 
@@ -189,7 +189,7 @@ case "$CURRENT" in
   main|master|develop|dev|staging|production|release)
     git pull && git checkout -b "$BRANCH_NAME" ;;
   *)
-    # different non-protected branch â€” check for open PR
+    # different non-protected branch — check for open PR
     HAS_PR=$(codedungeon git pr --repo "$REPO_DIR" --branch "$CURRENT" | jq -r '.pr_raw // empty')
     [ -n "$HAS_PR" ] && { echo "open PR on $CURRENT; merge first"; exit 2; }
     git checkout main && git pull && git checkout -b "$BRANCH_NAME"
@@ -202,9 +202,9 @@ codedungeon git guard --repo "$REPO_DIR"   # verify NOT on protected
 
 For each pending `[ ]` task in PLAN.md (tracked via `codedungeon plan meta`), spawn the **WORKER LOOP**:
 
-- Phase A: **specialist plan** â€” `{lang}-specialist` MODE=plan writes `{task_id}-plan.md`.
-- Phase B: **executor** â€” `general-purpose` agent implements the task; commits intermediate.
-- Phase C: **specialist review** â€” `{lang}-specialist` MODE=review writes `{task_id}-review.md` with APPROVED/CHANGES_REQUESTED. If CHANGES_REQUESTED, re-enter Phase B (max 9 iterations per task; warn at 5, hard stop at 9).
+- Phase A: **specialist plan** — `{lang}-specialist` MODE=plan writes `{task_id}-plan.md`.
+- Phase B: **executor** — `general-purpose` agent implements the task; commits intermediate.
+- Phase C: **specialist review** — `{lang}-specialist` MODE=review writes `{task_id}-review.md` with APPROVED/CHANGES_REQUESTED. If CHANGES_REQUESTED, re-enter Phase B (max 9 iterations per task; warn at 5, hard stop at 9).
 
 Mark task `[x]` only when Phase C approves and the Verification Gate passes. Mark `[!]` if blocked.
 
@@ -214,7 +214,7 @@ Mark task `[x]` only when Phase C approves and the Verification Gate passes. Mar
 codedungeon git guard --repo "$REPO_DIR"
 cd "$REPO_DIR"
 git add -A && git diff --cached --quiet || \
-  git commit -m "feat: $FEATURE_NAME â€” all tasks completed"
+  git commit -m "feat: $FEATURE_NAME — all tasks completed"
 git push -u origin "$BRANCH_NAME"
 ```
 
@@ -243,7 +243,7 @@ BODY
 fi
 ```
 
-If `gh pr create` fails or `PR_NUM` remains empty â†’ STOP (no silent skip) and return `Status BLOCKED` in the standard CodeDungeon PR Report.
+If `gh pr create` fails or `PR_NUM` remains empty → STOP (no silent skip) and return `Status BLOCKED` in the standard CodeDungeon PR Report.
 
 ### Main Loop Step 5: Adversarial review cycle
 
@@ -332,7 +332,7 @@ Next
 
 ## Failure modes
 
-- Protected branch detected mid-run â†’ HARD STOP.
-- `gh pr create` fails â†’ HARD STOP.
-- 9 adversarial cycles without APPROVED â†’ `MAX_CYCLES_REACHED`, exit 3, human triage.
-- Worker loop exhausts 9 iterations on a single task â†’ mark `[!]` blocked, continue.
+- Protected branch detected mid-run → HARD STOP.
+- `gh pr create` fails → HARD STOP.
+- 9 adversarial cycles without APPROVED → `MAX_CYCLES_REACHED`, exit 3, human triage.
+- Worker loop exhausts 9 iterations on a single task → mark `[!]` blocked, continue.

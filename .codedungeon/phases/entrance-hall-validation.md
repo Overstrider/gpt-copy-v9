@@ -1,8 +1,8 @@
-﻿# Phase 0: Validation + Auto-Discovery + Codebase Mapping + Continuation Detection
+# Phase 0: Validation + Auto-Discovery + Codebase Mapping + Continuation Detection
 
 Claude permission invariant: every Claude CLI session or subagent spawn controlled by codedungeon MUST include `--dangerously-skip-permissions`. This is mandatory and has no opt-out.
 
-**You are a phase agent.** Most work is deterministic â€” use `codedungeon` and cartographer. LLM judgment only for stack selection in BOOTSTRAP mode.
+**You are a phase agent.** Most work is deterministic — use `codedungeon` and cartographer. LLM judgment only for stack selection in BOOTSTRAP mode.
 
 ## Output mode
 
@@ -17,7 +17,7 @@ EXEMPT (write normal): code blocks, FILE CONTENTS (arcplan, plans, tasks, CLAUDE
 ---
 
 ## Inputs
-- `$ARGUMENTS` â€” user's feature prompt
+- `$ARGUMENTS` — user's feature prompt
 - root `CLAUDE.md` (optional; discover fills it)
 - per-repo `CLAUDE.md` files
 - per-repo `docs/CODEBASE_MAP.md` (cartographer)
@@ -126,8 +126,8 @@ For each repo in REPO_MAP (skip in BOOTSTRAP):
 PREV_FEATURE=$(codedungeon phase config feature 2>/dev/null || echo "")
 ```
 
-- Se `PREV_FEATURE == FEATURE_PROMPT` semanticamente â†’ **MODE=APPEND** (jÃ¡ inicializado; nÃ£o reset).
-- Se diferente E `.codedungeon/tasks/` tem conteÃºdo â†’ **MODE=FRESH**: delete `.codedungeon/tasks/*` e `.codedungeon/plan/*`; manter `.codedungeon/codedungeon.db` (histÃ³rico preservado; FTS5 search continua funcional).
+- Se `PREV_FEATURE == FEATURE_PROMPT` semanticamente → **MODE=APPEND** (já inicializado; não reset).
+- Se diferente E `.codedungeon/tasks/` tem conteúdo → **MODE=FRESH**: delete `.codedungeon/tasks/*` e `.codedungeon/plan/*`; manter `.codedungeon/codedungeon.db` (histórico preservado; FTS5 search continua funcional).
 
 ## Step 0.4: Test-auth prerequisite check
 
@@ -139,12 +139,12 @@ cat /tmp/auth.json
 # {"ok":true, "missing":["backend"], "present":["portal"], "spec":"run `codedungeon prompts get test-auth-spec`"}
 ```
 
-If `missing` nÃ£o vazio:
+If `missing` não vazio:
 ```bash
 codedungeon prompts get test-auth-spec > /tmp/test-auth-spec.md
 ```
 
-Salvar `TEST_AUTH_MISSING_REPOS` (serÃ¡ lido em Phase 4 para injetar TASK-001).
+Salvar `TEST_AUTH_MISSING_REPOS` (será lido em Phase 4 para injetar TASK-001).
 
 ---
 
@@ -166,8 +166,8 @@ codedungeon phase done 0 \
 
 ## Tool discipline
 
-Allowed: `Bash` (for `codedungeon`, `git`), `Task` (for Explore subagents â€” codebase mapping ONLY), `Read` (state/handoff files).
-Forbidden: `Write`/`Edit` on `pipeline-state.md` or `phase-0-output.md` â€” `codedungeon` handles those.
+Allowed: `Bash` (for `codedungeon`, `git`), `Task` (for Explore subagents — codebase mapping ONLY), `Read` (state/handoff files).
+Forbidden: `Write`/`Edit` on `pipeline-state.md` or `phase-0-output.md` — `codedungeon` handles those.
 
 ## Failure
 

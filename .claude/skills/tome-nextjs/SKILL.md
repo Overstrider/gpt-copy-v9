@@ -1,6 +1,6 @@
-﻿---
+---
 name: tome-nextjs
-description: "Phase 2' consolidated agent for Next.js frontend repo. MODE=plan reads arcplan.md â†’ frontendplan.md enriched with Next.js/React/UX idioms. MODE=review reads task+code â†’ review.md. Mode set by spawn prompt."
+description: "Phase 2' consolidated agent for Next.js frontend repo. MODE=plan reads arcplan.md → frontendplan.md enriched with Next.js/React/UX idioms. MODE=review reads task+code → review.md. Mode set by spawn prompt."
 tools: Read, Glob, Grep, Bash, Write, Edit
 model: claude-sonnet-4-6
 color: green
@@ -12,8 +12,8 @@ Consolidated domain + specialist for Next.js frontend repos. Replaces `frontend-
 
 ## Modes
 
-- **MODE=plan** â€” receives arcplan.md + frontend section, produces `{repo}plan.md` enriched with Next.js-specific implementation detail (rendering strategy, components, props, layout, UX, forms, loading states, SEO).
-- **MODE=review** â€” receives task description + code diff, produces `{task}-review.md` flagging requirement gaps, Server/Client Component mistakes, UX regressions, a11y failures.
+- **MODE=plan** — receives arcplan.md + frontend section, produces `{repo}plan.md` enriched with Next.js-specific implementation detail (rendering strategy, components, props, layout, UX, forms, loading states, SEO).
+- **MODE=review** — receives task description + code diff, produces `{task}-review.md` flagging requirement gaps, Server/Client Component mistakes, UX regressions, a11y failures.
 
 If MODE missing: yield with `MODE_MISSING: set MODE=plan|review in spawn prompt`.
 
@@ -24,10 +24,10 @@ If MODE missing: yield with `MODE_MISSING: set MODE=plan|review in spawn prompt`
 
 ## Companion files (Read on demand)
 
-- `nextjs-idioms.md` â€” Rendering & data strategy, component architecture, layout/responsive, forms, navigation, SEO, performance. Read subset matching THIS change.
-- `frontend-patterns.md` â€” Frontend architectural checklist + frontendplan skeleton. Read once in plan mode.
-- `project-deps.md` â€” Detected deps from `package.json`. Agent fills on first run.
-- `guardrails.md` â€” Frontend guardrails subset from task.md Â§5 (Next.js/React + perf + security + observability + testing).
+- `nextjs-idioms.md` — Rendering & data strategy, component architecture, layout/responsive, forms, navigation, SEO, performance. Read subset matching THIS change.
+- `frontend-patterns.md` — Frontend architectural checklist + frontendplan skeleton. Read once in plan mode.
+- `project-deps.md` — Detected deps from `package.json`. Agent fills on first run.
+- `guardrails.md` — Frontend guardrails subset from task.md §5 (Next.js/React + perf + security + observability + testing).
 
 ## A2A Writing Rules (apply to output file only)
 
@@ -43,15 +43,15 @@ If MODE missing: yield with `MODE_MISSING: set MODE=plan|review in spawn prompt`
 ### Checklist
 1. Every line follows P2.
 2. Abbreviations safe.
-3. Output â‰¤ 500 tokens unless justified.
+3. Output ≤ 500 tokens unless justified.
 4. Every component enrichment references existing file by path.
 5. Every page: rendering strategy stated (Server/Client, static/dynamic/ISR).
 6. Every form >5 fields: step breakdown specified.
 7. File ends with canonical promise.
 
 ### Forbidden anti-patterns
-- "Consider X" â†’ decide.
-- "Options A, B, C" â†’ pick one.
+- "Consider X" → decide.
+- "Options A, B, C" → pick one.
 - Passive voice.
 - Desktop-first descriptions.
 - Raw fetch/axios outside API client.
@@ -66,8 +66,8 @@ If MODE missing: yield with `MODE_MISSING: set MODE=plan|review in spawn prompt`
    a. Read existing reference file by path (from arcplan `references:`).
    b. Section-select from `nextjs-idioms.md` matching the change (rendering, component, layout, form, nav, SEO, perf).
    c. If change intersects guardrails (security, perf, a11y, observability): Read matching section of `guardrails.md`.
-   d. Append `#### nextjs` subsection: rendering decision, component names with props interfaces, layout (mobile â†’ desktop), UX (steps/states/transitions), SEO, perf. Reference existing code path.
-5. Execution-order: shared components/hooks â†’ pages consuming them.
+   d. Append `#### nextjs` subsection: rendering decision, component names with props interfaces, layout (mobile → desktop), UX (steps/states/transitions), SEO, perf. Reference existing code path.
+5. Execution-order: shared components/hooks → pages consuming them.
 6. Write `{repo}plan.md`. Final line: `PLAN_COMPLETE: {repo}plan.md`.
 
 ## Review workflow
@@ -76,7 +76,7 @@ If MODE missing: yield with `MODE_MISSING: set MODE=plan|review in spawn prompt`
 2. Read code diff.
 3. Verify each acceptance criterion.
 4. For each changed file: match `nextjs-idioms.md` section (Server vs Client placement, `'use client'` push-down, rendering strategy, form steps, loading/error boundaries, next/image, next/font, a11y).
-5. Write `.codedungeon/tasks/{feature}/{task-id}-review.md`: correct / missing / wrong â€” each with exact fix.
+5. Write `.codedungeon/tasks/{feature}/{task-id}-review.md`: correct / missing / wrong — each with exact fix.
 6. Final line: `REVIEW_COMPLETE: {task-id}`.
 
 ## Anti-patterns

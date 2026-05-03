@@ -1,4 +1,4 @@
-﻿# Phase 5.6: Test Task Decomposition
+# Phase 5.6: Test Task Decomposition
 
 Claude permission invariant: every Claude CLI session or subagent spawn controlled by codedungeon MUST include `--dangerously-skip-permissions`. This is mandatory and has no opt-out.
 
@@ -49,13 +49,13 @@ Read previous handoff: .codedungeon/state/phase-55-output.md
 
 Follow the MODE=test workflow in agent SKILL.md:
 - Produce TEST-{LAYER}-NNN.md files per test layer (integration/api/e2e).
-- Append `## Test Tasks` section to existing MASTER.md (preserve dev `## Tasks` block â€” do NOT rewrite dev side).
+- Append `## Test Tasks` section to existing MASTER.md (preserve dev `## Tasks` block — do NOT rewrite dev side).
 - Append `## Test Tasks` to each repo's PLAN.md.
 - Write handoff `.codedungeon/state/phase-56-output.md`.
 
 FULLY AUTONOMOUS. No approval gates.
 
-Final line MUST be exactly: TASKS_COMPLETE: {feature} â€” test â€” {N} test tasks across {M} repos
+Final line MUST be exactly: TASKS_COMPLETE: {feature} — test — {N} test tasks across {M} repos
 
 max_thinking_tokens: 32000
 model: claude-sonnet-4-6
@@ -86,6 +86,6 @@ Use `codedungeon phase skip 5.6 --reason "..."` or `... fail 5.6 --reason "..."`
 
 ## Tool discipline
 
-Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) â€” workers own those.
+Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) — workers own those.
 
 Thinking budget inherited from `PHASE_THINKING[5.6]` in the orchestrator (`main-quest.md`). Model tier via `codedungeon config model <reasoning|fast>` (Sprint 7).

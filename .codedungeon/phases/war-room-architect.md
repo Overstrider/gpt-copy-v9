@@ -1,4 +1,4 @@
-﻿# Phase 1: Architect Planning
+# Phase 1: Architect Planning
 
 Claude permission invariant: every Claude CLI session or subagent spawn controlled by codedungeon MUST include `--dangerously-skip-permissions`. This is mandatory and has no opt-out.
 
@@ -6,17 +6,17 @@ Claude permission invariant: every Claude CLI session or subagent spawn controll
 
 ## Inputs
 - Pipeline state: `.codedungeon/plan/pipeline-state.md` (read this FIRST for config, repo map, env vars)
-- `FEATURE_PROMPT` â€” the validated user prompt from Phase 0
-- `REPO_MAP` â€” discovered repo map from Phase 0
-- `PROJECT_MODE` â€” BOOTSTRAP, SINGLE, or MULTI (from Phase 0)
-- `TEST_AUTH_MISSING_REPOS` â€” list of repos needing test auth (from Phase 0, may be empty)
-- Root `CLAUDE.md` â€” project overview, repo table, workflow roles
-- Per-repo `CLAUDE.md` files â€” repo-specific config and conventions
-- Per-repo `docs/CODEBASE_MAP.md` â€” cartographer-generated codebase maps
-- `.claude/agents/dragon-architect-planner.md` â€” architect agent instructions
+- `FEATURE_PROMPT` — the validated user prompt from Phase 0
+- `REPO_MAP` — discovered repo map from Phase 0
+- `PROJECT_MODE` — BOOTSTRAP, SINGLE, or MULTI (from Phase 0)
+- `TEST_AUTH_MISSING_REPOS` — list of repos needing test auth (from Phase 0, may be empty)
+- Root `CLAUDE.md` — project overview, repo table, workflow roles
+- Per-repo `CLAUDE.md` files — repo-specific config and conventions
+- Per-repo `docs/CODEBASE_MAP.md` — cartographer-generated codebase maps
+- `.claude/agents/dragon-architect-planner.md` — architect agent instructions
 
 ## Outputs
-- `.codedungeon/plan/arcplan.md` â€” comprehensive architecture plan
+- `.codedungeon/plan/arcplan.md` — comprehensive architecture plan
 - Update `.codedungeon/plan/pipeline-state.md`: set Phase 1 status to DONE + list artifacts
 
 ---
@@ -44,7 +44,7 @@ PROJECT REQUEST:
 {FEATURE_PROMPT}
 
 STACK: {stack} (lang: {lang})
-PROJECT MODE: BOOTSTRAP (empty project â€” no existing code)
+PROJECT MODE: BOOTSTRAP (empty project — no existing code)
 
 YOUR JOB:
 1. Design the project architecture from the ground up:
@@ -73,7 +73,7 @@ The plan MUST include:
 - ## Conventions (naming, file organization, patterns to follow)
 
 IMPORTANT: Since there is no existing code, you are DEFINING the patterns.
-Be opinionated â€” choose well-established conventions for the stack.
+Be opinionated — choose well-established conventions for the stack.
 The domain planners and specialists will use this plan to generate tasks
 that create the project from zero.
 ```
@@ -96,7 +96,7 @@ PROJECT MODE: {SINGLE or MULTI}
 
 YOUR JOB:
 1. Read and understand the project structure:
-   - Read CLAUDE.md (root â€” project overview, workflow, roles, permissions)
+   - Read CLAUDE.md (root — project overview, workflow, roles, permissions)
    - For each repo in REPO_MAP, read its CLAUDE.md (in single-repo mode, there's only the root CLAUDE.md)
    - Read {repo_path}/docs/CODEBASE_MAP.md for comprehensive repo context
      (architecture, modules, data flows, conventions, navigation guide).
@@ -112,24 +112,24 @@ YOUR JOB:
 3. Write a comprehensive architecture plan to .codedungeon/plan/arcplan.md
 
 The plan MUST include:
-- ## meta section with: feature name, repos list (which repos are affected â€” use "." for single-repo)
+- ## meta section with: feature name, repos list (which repos are affected — use "." for single-repo)
 - ## Feature Description (original prompt)
 - ## Codebase Analysis (what you found in the codebase)
-- ## Repos Affected (which repos need changes and why â€” use "." for single-repo)
+- ## Repos Affected (which repos need changes and why — use "." for single-repo)
 - ## Implementation Strategy (high-level approach)
 - ## repo:{repo_name} section for EACH affected repo (use ## repo:. for single-repo)
-- ## cross-repo section (integration points â€” omit or mark N/A for single-repo)
+- ## cross-repo section (integration points — omit or mark N/A for single-repo)
 - ## Execution Order (for single-repo, just list "." as the only entry)
 - ## Risks and Edge Cases
 
-BE PRECISE. Less is more â€” plan the minimum viable change. Read real files. Reference real patterns. Do not add complexity the feature doesn't need.
+BE PRECISE. Less is more — plan the minimum viable change. Read real files. Reference real patterns. Do not add complexity the feature doesn't need.
 This plan will be read by domain planners that need concrete guidance.
 ```
 
 **Test Auth Injection (Step 1.1 continued):** If `TEST_AUTH_MISSING_REPOS` is not empty, you MUST append the following block to the dragon-architect-planner prompt above, right before `YOUR JOB:`:
 
 ```
-PREREQUISITE â€” TEST AUTH:
+PREREQUISITE — TEST AUTH:
 The following repos need a dev-only test-login endpoint created
 BEFORE any tests can run: {TEST_AUTH_MISSING_REPOS joined by comma}
 
@@ -177,6 +177,6 @@ Use `codedungeon phase skip 1 --reason "..."` or `... fail 1 --reason "..."` for
 
 ## Tool discipline
 
-Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) â€” workers own those.
+Phase-agent = orchestrator. Allowed: `Task` (spawn workers), `Read` (state + handoff files), `Bash` (for `codedungeon` + `git` + tool calls). Forbidden: `Write`/`Edit` on artifact files (arcplan.md, plans, task files, review files) — workers own those.
 
 Thinking budget inherited from `PHASE_THINKING[1]` in the orchestrator (`main-quest.md`). Model tier via `codedungeon config model <reasoning|fast>` (Sprint 7).

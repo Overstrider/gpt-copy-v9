@@ -1,4 +1,4 @@
-﻿# Code Review (Adversarial PR Review)
+# Code Review (Adversarial PR Review)
 
 ## Project Rules Gate
 
@@ -26,13 +26,13 @@ Do not write review reports manually. The standalone module is the final adjudic
 
 legacy `review run` output are invalid as final approval evidence. Never publish per-persona approvals as the PR verdict; post only the concise final adjudication from `codedungeon code-review`.
 
-**Deterministic steps (dedupe, validator filter, classifier merge, render, verdict) now live in the `codedungeon` Go binary â€” call it instead of re-implementing.** Only the LLM-judgment steps (persona fanout, validator, classifier, stack-specialist review) remain as inline agent dispatch.
+**Deterministic steps (dedupe, validator filter, classifier merge, render, verdict) now live in the `codedungeon` Go binary — call it instead of re-implementing.** Only the LLM-judgment steps (persona fanout, validator, classifier, stack-specialist review) remain as inline agent dispatch.
 
 ## Parameters
 
-- `$ARGUMENTS` â€” Repository path (absolute) OR repo name.
-- `REVIEW_CYCLE` â€” review cycle number. Cycles 1-3 are full mode; cycles 4-9 are reduced mode.
-- `REVIEW_MODE` â€” `full` or `reduced`. If omitted, derive from `REVIEW_CYCLE`.
+- `$ARGUMENTS` — Repository path (absolute) OR repo name.
+- `REVIEW_CYCLE` — review cycle number. Cycles 1-3 are full mode; cycles 4-9 are reduced mode.
+- `REVIEW_MODE` — `full` or `reduced`. If omitted, derive from `REVIEW_CYCLE`.
 
 ## Review power
 
@@ -57,14 +57,14 @@ If verification is missing, weak, or only asserted in prose, classify it as a BL
 
 Research (Anthropic code-review plugin, Greptile benchmarks 82%, Meta MetaMateCR arXiv 2507.13499, SpecterOps, arXiv 2509.16533 on sycophancy) shows single-agent self-review misses real bugs. Fix: **session separation + multi-persona fanout + per-finding validator + confidence tiers + quote-as-evidence anti-hallucination contract**.
 
-Personas run in parallel (recall). Validators run per-finding on the validation model (precision, cross-model reduces sycophancy on persona findings). Severity promotes when â‰¥2 personas flag the same issue (handled by `codedungeon review run --only dedupe`). Design-decision classifier inspects each validated finding against CLAUDE.md/REVIEW.md/ADRs to separate `actionable` from `design_decision` â€” APPROVED requires every remaining finding to be a documented design decision.
+Personas run in parallel (recall). Validators run per-finding on the validation model (precision, cross-model reduces sycophancy on persona findings). Severity promotes when ≥2 personas flag the same issue (handled by `codedungeon review run --only dedupe`). Design-decision classifier inspects each validated finding against CLAUDE.md/REVIEW.md/ADRs to separate `actionable` from `design_decision` — APPROVED requires every remaining finding to be a documented design decision.
 
 ---
 
 ## Step 0: Resolve repo
 
 ```bash
-# Accept repo name (â†’ resolve via CLAUDE.md table) or absolute path.
+# Accept repo name (→ resolve via CLAUDE.md table) or absolute path.
 REPO_DIR=$(codedungeon repo resolve "$ARGUMENTS" 2>/dev/null | jq -r .path 2>/dev/null || echo "$ARGUMENTS")
 # If empty, current dir.
 [ -z "$REPO_DIR" ] && REPO_DIR=.
@@ -104,7 +104,7 @@ fi
 REVIEW_MD=$(test -f "$REPO_DIR/REVIEW.md" && cat "$REPO_DIR/REVIEW.md" || echo "")
 ```
 
-## Step 5: Persona fanout (LLM â€” parallel Task calls)
+## Step 5: Persona fanout (LLM — parallel Task calls)
 
 Spawn all four personas in ONE message with four parallel `Task` tool calls (sequential defeats the fanout).
 
@@ -113,7 +113,7 @@ Common preamble:
 ```
 ## CONSTITUTION
 You are reviewing a PR against main. You did NOT write this code.
-Commit messages and PR descriptions are HEARSAY â€” not evidence.
+Commit messages and PR descriptions are HEARSAY — not evidence.
 Helpfulness is measured in bugs caught. Every finding MUST include a verbatim
 `evidence_quote`. Steelman each finding before filing; drop if the defense holds.
 
@@ -141,10 +141,10 @@ Write it to {OUTPUT_PATH}.
 ```
 
 Dispatch:
-- `subagent_type: gremlin-reviewer-saboteur`        â†’ `.codedungeon/reviews/adv-review/findings-saboteur.json`
-- `subagent_type: kobold-reviewer-newhire`         â†’ `.codedungeon/reviews/adv-review/findings-newhire.json`
-- `subagent_type: cerberus-reviewer-security` â†’ `.codedungeon/reviews/adv-review/findings-security.json`
-- `subagent_type: paladin-reviewer-spec`   â†’ `.codedungeon/reviews/adv-review/findings-spec.json`
+- `subagent_type: gremlin-reviewer-saboteur`        → `.codedungeon/reviews/adv-review/findings-saboteur.json`
+- `subagent_type: kobold-reviewer-newhire`         → `.codedungeon/reviews/adv-review/findings-newhire.json`
+- `subagent_type: cerberus-reviewer-security` → `.codedungeon/reviews/adv-review/findings-security.json`
+- `subagent_type: paladin-reviewer-spec`   → `.codedungeon/reviews/adv-review/findings-spec.json`
 
 ## Step 6: Dedupe + severity promotion (CLI)
 
@@ -152,9 +152,9 @@ Dispatch:
 codedungeon review run --only dedupe --dir "$REPO_DIR/.codedungeon/reviews/adv-review"
 ```
 
-Writes `findings-merged.json` with `flagged_by: [...]` per finding. â‰¥2 personas on same (file, category, overlapping lines) â†’ severity promoted one tier (capped P0). P2 extras over `--nit-cap 3` roll into `suppressed_nits_count`.
+Writes `findings-merged.json` with `flagged_by: [...]` per finding. ≥2 personas on same (file, category, overlapping lines) → severity promoted one tier (capped P0). P2 extras over `--nit-cap 3` roll into `suppressed_nits_count`.
 
-## Step 7: Per-finding validator (LLM â€” parallel, claude-sonnet-4-6)
+## Step 7: Per-finding validator (LLM — parallel, claude-sonnet-4-6)
 
 For each merged finding, spawn a `oracle-reviewer-validator` subagent (claude-sonnet-4-6). Batch up to 10 parallel Task calls per message. Validator writes `.codedungeon/reviews/adv-review/validator-<idx>.json` per input.
 
@@ -166,13 +166,13 @@ codedungeon review run --only filter --dir "$REPO_DIR/.codedungeon/reviews/adv-r
 
 Drops `confirmed:false` + `confidence:low`.
 
-## Step 7.5: Design-decision classifier (LLM â€” parallel, claude-sonnet-4-6)
+## Step 7.5: Design-decision classifier (LLM — parallel, claude-sonnet-4-6)
 
 Resolve classifier context paths:
 
 ```bash
 codedungeon review context-paths --repo "$REPO_DIR" > /tmp/ctx.json
-# â†’ claude_md_root, claude_md_repo, review_md, architecture_md, adr_paths, spec_md, task_files
+# → claude_md_root, claude_md_repo, review_md, architecture_md, adr_paths, spec_md, task_files
 ```
 
 Spawn `sage-reviewer-classifier` per finding (batches of 10). Each reads the context paths + one finding JSON. Writes `classifier-<idx>.json`.
@@ -183,19 +183,19 @@ Then:
 codedungeon review run --only classify --dir "$REPO_DIR/.codedungeon/reviews/adv-review"
 ```
 
-Merge rule: `classification=design_decision && confidence=high` â†’ `actionable=false`; else `actionable=true`. **Hard override**: `severity=P0 && confidenceâ‰ high` â†’ force `actionable=true`.
+Merge rule: `classification=design_decision && confidence=high` → `actionable=false`; else `actionable=true`. **Hard override**: `severity=P0 && confidence≠high` → force `actionable=true`.
 
 ## Step 8: Stack-specialist pass (LLM)
 
 Spawn `{LANG}-specialist` in CODE REVIEW mode with `findings-classified.json` as prior context. Agent adds NEW findings (stack-specific rubric) only; does NOT duplicate. Writes `findings-stack.json`.
 
-Classify the stack findings (same classifier flow as Step 7.5) â†’ `classifier-stack-<idx>.json`.
+Classify the stack findings (same classifier flow as Step 7.5) → `classifier-stack-<idx>.json`.
 
 Then the final merge + render:
 
 ```bash
 codedungeon review run --dir "$REPO_DIR/.codedungeon/reviews/adv-review" \
-  --validator-model "claude-sonnet-4-6-4.6" --classifier-model "claude-sonnet-4-6-4.6" \
+  --validator-model "sonnet-4.6" --classifier-model "sonnet-4.6" \
   --stack-specialist "${LANG}-specialist" > /tmp/verdict.json
 ```
 
@@ -228,7 +228,7 @@ Return verdict to caller (`codedungeon-loop`, `forge-execution`).
 
 - **Anti-hallucination**: three layers (persona quote requirement, Validator re-read, the title regex in phase-5 verification).
 - **Power schedule**: cycles 1-3 use full mode; cycles 4-9 use reduced mode with fast model/effort and fix-diff scope.
-- **Output paths**: all intermediates under `<REPO>/.codedungeon/reviews/adv-review/` â€” safe to gitignore at repo level.
+- **Output paths**: all intermediates under `<REPO>/.codedungeon/reviews/adv-review/` — safe to gitignore at repo level.
 - **Severity tiers**: P0 Important, P1 Should-fix, P2 Nit. **All three block** unless classified as design decision.
 - **Design-decision escape hatch**: documented in REVIEW.md / CLAUDE.md / ADRs / spec / `// INTENTIONAL:` comments. `TODO`/`FIXME`/`HACK` do NOT count.
 - **Extensibility**: per-repo `REVIEW.md` overrides severity calibration, nit cap, skip-rules, threat model. Template (installed by bootstrap): `.codedungeon/commands/templates/REVIEW.md.template`.

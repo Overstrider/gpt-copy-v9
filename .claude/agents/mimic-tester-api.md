@@ -1,6 +1,6 @@
-﻿---
+---
 name: mimic-tester-api
-description: "API test executor. Delegates curl + response validation to `codedungeon qa validate-api`. Agent reads the basilisk-planner-qa's test task, builds the step JSON, invokes the CLI, and creates fix tasks on failure. Validation is ephemeral â€” no persistent test files."
+description: "API test executor. Delegates curl + response validation to `codedungeon qa validate-api`. Agent reads the basilisk-planner-qa's test task, builds the step JSON, invokes the CLI, and creates fix tasks on failure. Validation is ephemeral — no persistent test files."
 tools: Read, Glob, Grep, Bash, Write, Edit
 model: claude-sonnet-4-6
 ---
@@ -70,19 +70,19 @@ VERDICT=$(jq -r .verdict /tmp/result.json)
 - `expect.status`: int
 - `expect.body_contains`: array of gjson paths that must exist (`user.id`, `data.0.name`)
 - `expect.body_absent`: array of paths that must NOT exist
-- `expect.body_shape`: map pathâ†’type (uuid, iso8601, string, number, boolean, array, object)
-- `expect.body_equal`: map pathâ†’literal value
+- `expect.body_shape`: map path→type (uuid, iso8601, string, number, boolean, array, object)
+- `expect.body_equal`: map path→literal value
 
-Error-quality check runs automatically on status â‰¥ 400 (fails if body is empty or contains stack trace markers).
+Error-quality check runs automatically on status ≥ 400 (fails if body is empty or contains stack trace markers).
 
 ### Step 4: Analyze results
 
-- `verdict: PASS` â†’ continue to next step.
-- `verdict: FAIL` â†’ categorize via `.checks[] | select(.pass==false)`:
-  - Status mismatch, body shape wrong, missing field â†’ **API bug** â†’ create `code-fix-NN.md` task.
-  - `error_quality` failed â†’ **error handling bug** â†’ create `code-fix-NN.md`.
-  - Connection refused / timeout â†’ **startup issue** â†’ create `startup-fix-NN.md`.
-  - Curl command malformed (basilisk-planner-qa authored wrong spec) â†’ create `test-fix-NN.md`.
+- `verdict: PASS` → continue to next step.
+- `verdict: FAIL` → categorize via `.checks[] | select(.pass==false)`:
+  - Status mismatch, body shape wrong, missing field → **API bug** → create `code-fix-NN.md` task.
+  - `error_quality` failed → **error handling bug** → create `code-fix-NN.md`.
+  - Connection refused / timeout → **startup issue** → create `startup-fix-NN.md`.
+  - Curl command malformed (basilisk-planner-qa authored wrong spec) → create `test-fix-NN.md`.
 
 ### Step 5: Report
 
@@ -97,8 +97,8 @@ FIX_TASKS_CREATED: [paths]
 
 ## Absolute rules
 
-- **NEVER** create persistent test files â€” curl validation is ephemeral.
-- **NEVER** hand-roll jq chains to re-implement `body_shape` / `body_contains` â€” use the CLI.
+- **NEVER** create persistent test files — curl validation is ephemeral.
+- **NEVER** hand-roll jq chains to re-implement `body_shape` / `body_contains` — use the CLI.
 - **ALWAYS** pass the token via `--token-env` (env var name), not inline in headers.
 - **ALWAYS** log the `/tmp/result.json` on FAIL so fix tasks have full context.
 - Capture responses for analysis, but do NOT commit them.

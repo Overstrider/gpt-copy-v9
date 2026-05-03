@@ -17,4 +17,3 @@ Without a flag, `/codedungeon` selects automatically and prints `CODEDUNGEON_MOD
 Project Rules: workflows read `.codedungeon/project-rules.compact.md` when approved and include `PROJECT_RULES_STATUS`, `PROJECT_RULES_DIGEST`, and `PROJECT_RULES_READ` in handoffs.
 
 Subagents and skills installed in `.claude/`; editable commands, phases, and mutable state live in `.codedungeon/`. CLI binary at `.claude\bin/codedungeon`.
-
