@@ -2,11 +2,10 @@ mod support;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use axum_test::TestServer;
 use futures_util::stream::{self, BoxStream};
 use gpt_copy_v9::error::AppError;
 use gpt_copy_v9::openrouter::{ChatMessage, OpenRouterClient, StreamEvent};
-use support::test_app;
+use support::{test_app, test_server};
 
 struct FailingOpenRouterClient;
 
@@ -84,7 +83,7 @@ async fn test_app_with_client(
 #[tokio::test]
 async fn test_stream_chat_validates_empty_content() {
     let app = test_app(vec!["Hello".to_string()]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
 
     // Create a conversation first
     let create = server
@@ -107,7 +106,7 @@ async fn test_stream_chat_validates_empty_content() {
 #[tokio::test]
 async fn test_stream_chat_unknown_conversation() {
     let app = test_app(vec!["Hello".to_string()]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
 
     let resp = server
         .post("/api/conversations/nonexistent/stream")
@@ -119,7 +118,7 @@ async fn test_stream_chat_unknown_conversation() {
 #[tokio::test]
 async fn test_stream_persists_user_message() {
     let app = test_app(vec!["World".to_string()]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
 
     let create = server
         .post("/api/conversations")
@@ -154,7 +153,7 @@ async fn test_stream_persists_user_message() {
 #[tokio::test]
 async fn test_stream_open_failure_does_not_persist_user_message() {
     let (app, pool) = test_app_with_client(Arc::new(FailingOpenRouterClient)).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
 
     let create = server
         .post("/api/conversations")
@@ -180,7 +179,7 @@ async fn test_stream_open_failure_does_not_persist_user_message() {
 #[tokio::test]
 async fn test_stream_error_is_sanitized_and_does_not_persist_partial_assistant() {
     let (app, _pool) = test_app_with_client(Arc::new(ErroringStreamClient)).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
 
     let create = server
         .post("/api/conversations")
@@ -210,7 +209,7 @@ async fn test_stream_error_is_sanitized_and_does_not_persist_partial_assistant()
 #[tokio::test]
 async fn test_stream_without_done_skips_persistence() {
     let (app, _pool) = test_app_with_client(Arc::new(NoDoneStreamClient)).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
 
     let create = server
         .post("/api/conversations")
@@ -243,7 +242,7 @@ async fn test_stream_sends_only_recent_history_to_openrouter() {
         calls: calls.clone(),
     });
     let (app, pool) = test_app_with_client(client).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
 
     let create = server
         .post("/api/conversations")
@@ -253,9 +252,15 @@ async fn test_stream_sends_only_recent_history_to_openrouter() {
     let id = conv["id"].as_str().unwrap();
 
     for i in 0..45 {
-        gpt_copy_v9::repository::create_message(&pool, id, "user", &format!("old-{i}"))
-            .await
-            .unwrap();
+        gpt_copy_v9::repository::create_message(
+            &pool,
+            id,
+            support::TEST_OWNER_ID,
+            "user",
+            &format!("old-{i}"),
+        )
+        .await
+        .unwrap();
     }
 
     let stream_resp = server

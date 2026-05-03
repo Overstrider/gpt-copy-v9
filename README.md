@@ -16,7 +16,7 @@ cd gpt-copy-v9
 
 # Copy and configure environment
 cp .env.example .env
-# Edit .env with your OPENROUTER_API_KEY
+# Edit .env with your OPENROUTER_API_KEY and a long random API_AUTH_TOKEN
 ```
 
 ## Environment
@@ -24,11 +24,13 @@ cp .env.example .env
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `OPENROUTER_API_KEY` | Required for live chat. Automated tests use mocks. | — |
+| `API_AUTH_TOKEN` | Required bearer token shared only by the backend and Next.js server-side proxy. Do not prefix with `NEXT_PUBLIC_`. | — |
+| `API_BASE_URL` | Rust backend URL used by the Next.js server-side proxy | `http://localhost:3001` |
 | `OPENROUTER_MODEL` | Model to use via OpenRouter | `nvidia/nemotron-3-super-120b-a12b:free` |
 | `DATABASE_URL` | SQLite database path | `sqlite:./gpt-copy-v9.db` |
 | `FRONTEND_ORIGIN` | Allowed browser origin for CORS | `http://localhost:3000` |
 
-> **Note**: Automated tests use mocked or deterministic OpenRouter behavior. Live chat requires a local `OPENROUTER_API_KEY`.
+> **Note**: Automated tests use mocked or deterministic OpenRouter behavior. Live chat requires local `OPENROUTER_API_KEY` and `API_AUTH_TOKEN` values. The frontend calls its own Next.js `/api/*` routes, and those server-side routes inject the backend bearer token.
 
 ## Backend
 
@@ -41,7 +43,7 @@ cargo fmt -- --check
 # Build
 cargo build
 
-# Run (requires .env with OPENROUTER_API_KEY)
+# Run (requires .env with OPENROUTER_API_KEY and API_AUTH_TOKEN)
 cargo run
 
 # Run tests (no API key required)
@@ -83,6 +85,7 @@ npm run test:e2e
 | Issue | Fix |
 |-------|-----|
 | `OPENROUTER_API_KEY not set` | Copy `.env.example` to `.env` and add your key |
+| `API_AUTH_TOKEN not set` | Add the same long random `API_AUTH_TOKEN` to the backend and frontend server environments |
 | `cargo: command not found` | Install Rust via `rustup.rs` |
 | `npm: command not found` | Install Node.js 18+ |
 | SQLite errors | Delete `*.db` files and restart the backend |

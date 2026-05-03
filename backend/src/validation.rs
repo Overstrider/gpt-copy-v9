@@ -10,7 +10,7 @@ pub fn validate_conversation_title(title: &Option<String>) -> AppResult<()> {
                 "Conversation title cannot be blank".to_string(),
             ));
         }
-        if t.len() > 256 {
+        if t.chars().count() > 256 {
             return Err(AppError::BadRequest(
                 "Conversation title must be 256 characters or fewer".to_string(),
             ));

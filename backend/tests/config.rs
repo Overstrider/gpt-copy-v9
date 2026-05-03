@@ -9,7 +9,7 @@ fn debug_output_redacts_openrouter_api_key() {
         host: "127.0.0.1".to_string(),
         port: 3001,
         frontend_origin: "http://localhost:3000".to_string(),
-        api_auth_token: Some("secret-api-token".to_string()),
+        api_auth_token: "secret-api-token".to_string(),
     };
 
     let debug = format!("{config:?}");

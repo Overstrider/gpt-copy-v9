@@ -9,6 +9,8 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use crate::config::Config;
 use crate::openrouter::OpenRouterClient;
 
+pub(crate) const DEFAULT_MAX_CONCURRENT_STREAMS: usize = 8;
+
 #[derive(Clone)]
 pub struct AppState {
     pub db: SqlitePool,
@@ -17,7 +19,10 @@ pub struct AppState {
     pub stream_registry: StreamRegistry,
 }
 
-const DEFAULT_MAX_CONCURRENT_STREAMS: usize = 8;
+#[derive(Clone, Debug)]
+pub struct AuthenticatedUser {
+    pub id: String,
+}
 
 #[derive(Clone)]
 pub struct StreamRegistry {

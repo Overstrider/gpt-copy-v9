@@ -1,11 +1,10 @@
 mod support;
-use axum_test::TestServer;
-use support::test_app;
+use support::{test_app, test_server};
 
 #[tokio::test]
 async fn test_list_conversations_empty() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let resp = server.get("/api/conversations").await;
     resp.assert_status_ok();
     let body: serde_json::Value = resp.json();
@@ -15,7 +14,7 @@ async fn test_list_conversations_empty() {
 #[tokio::test]
 async fn test_create_conversation() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let resp = server
         .post("/api/conversations")
         .json(&serde_json::json!({ "title": "My Chat" }))
@@ -29,7 +28,7 @@ async fn test_create_conversation() {
 #[tokio::test]
 async fn test_get_conversation_not_found() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let resp = server.get("/api/conversations/nonexistent").await;
     resp.assert_status(axum::http::StatusCode::NOT_FOUND);
     let body: serde_json::Value = resp.json();
@@ -39,7 +38,7 @@ async fn test_get_conversation_not_found() {
 #[tokio::test]
 async fn test_update_conversation() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let create = server
         .post("/api/conversations")
         .json(&serde_json::json!({ "title": "Original" }))
@@ -57,9 +56,27 @@ async fn test_update_conversation() {
 }
 
 #[tokio::test]
+async fn test_update_conversation_requires_title() {
+    let app = test_app(vec![]).await;
+    let server = test_server(app);
+    let create = server
+        .post("/api/conversations")
+        .json(&serde_json::json!({ "title": "Original" }))
+        .await;
+    let created: serde_json::Value = create.json();
+    let id = created["id"].as_str().unwrap();
+
+    let resp = server
+        .patch(&format!("/api/conversations/{id}"))
+        .json(&serde_json::json!({}))
+        .await;
+    resp.assert_status(axum::http::StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
 async fn test_delete_conversation() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let create = server
         .post("/api/conversations")
         .json(&serde_json::json!({ "title": "To Delete" }))
@@ -77,7 +94,7 @@ async fn test_delete_conversation() {
 #[tokio::test]
 async fn test_create_conversation_default_title() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let resp = server
         .post("/api/conversations")
         .json(&serde_json::json!({}))
@@ -90,7 +107,7 @@ async fn test_create_conversation_default_title() {
 #[tokio::test]
 async fn test_list_conversations_ordered() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     server
         .post("/api/conversations")
         .json(&serde_json::json!({ "title": "First" }))

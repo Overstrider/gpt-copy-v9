@@ -6,6 +6,8 @@ use std::time::Duration;
 
 use crate::error::AppError;
 
+const MAX_SSE_LINE_BYTES: usize = 1_048_576;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: String,
@@ -125,6 +127,14 @@ impl OpenRouterClient for HttpOpenRouterClient {
                     use futures_util::StreamExt;
                     match byte_stream.next().await {
                         Some(Ok(chunk)) => {
+                            if buf.len() + chunk.len() > MAX_SSE_LINE_BYTES {
+                                return Some((
+                                    vec![Err(AppError::OpenRouter(
+                                        "SSE event exceeded maximum line length".to_string(),
+                                    ))],
+                                    (byte_stream, String::new(), true),
+                                ));
+                            }
                             buf.push_str(&String::from_utf8_lossy(&chunk));
                         }
                         Some(Err(e)) => {

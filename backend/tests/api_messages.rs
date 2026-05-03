@@ -1,6 +1,6 @@
 mod support;
 use axum_test::TestServer;
-use support::test_app;
+use support::{test_app, test_server};
 
 async fn create_conv(server: &TestServer, title: &str) -> String {
     let resp = server
@@ -14,7 +14,7 @@ async fn create_conv(server: &TestServer, title: &str) -> String {
 #[tokio::test]
 async fn test_list_messages_empty() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let id = create_conv(&server, "Chat").await;
     let resp = server
         .get(&format!("/api/conversations/{id}/messages"))
@@ -27,7 +27,7 @@ async fn test_list_messages_empty() {
 #[tokio::test]
 async fn test_create_message() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let id = create_conv(&server, "Chat").await;
     let resp = server
         .post(&format!("/api/conversations/{id}/messages"))
@@ -42,7 +42,7 @@ async fn test_create_message() {
 #[tokio::test]
 async fn test_create_message_empty_content() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let id = create_conv(&server, "Chat").await;
     let resp = server
         .post(&format!("/api/conversations/{id}/messages"))
@@ -56,7 +56,7 @@ async fn test_create_message_empty_content() {
 #[tokio::test]
 async fn test_list_messages_for_unknown_conversation() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let resp = server.get("/api/conversations/nonexistent/messages").await;
     resp.assert_status(axum::http::StatusCode::NOT_FOUND);
 }
@@ -64,7 +64,7 @@ async fn test_list_messages_for_unknown_conversation() {
 #[tokio::test]
 async fn test_delete_message() {
     let app = test_app(vec![]).await;
-    let server = TestServer::new(app).unwrap();
+    let server = test_server(app);
     let id = create_conv(&server, "Chat").await;
     let msg_resp = server
         .post(&format!("/api/conversations/{id}/messages"))

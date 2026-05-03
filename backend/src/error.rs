@@ -39,9 +39,30 @@ struct ErrorBody {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, code, message) = match &self {
-            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
-            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg.clone()),
-            AppError::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg.clone()),
+            AppError::NotFound(msg) => {
+                tracing::debug!("Not found: {msg}");
+                (
+                    StatusCode::NOT_FOUND,
+                    "NOT_FOUND",
+                    "Resource not found".to_string(),
+                )
+            }
+            AppError::BadRequest(msg) => {
+                tracing::debug!("Bad request: {msg}");
+                (
+                    StatusCode::BAD_REQUEST,
+                    "BAD_REQUEST",
+                    "Invalid request".to_string(),
+                )
+            }
+            AppError::Conflict(msg) => {
+                tracing::debug!("Conflict: {msg}");
+                (
+                    StatusCode::CONFLICT,
+                    "CONFLICT",
+                    "Request conflict".to_string(),
+                )
+            }
             AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", msg.clone()),
             AppError::Internal(msg) => {
                 tracing::error!("Internal error: {msg}");

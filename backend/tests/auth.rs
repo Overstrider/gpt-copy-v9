@@ -13,7 +13,7 @@ use gpt_copy_v9::openrouter::FakeOpenRouterClient;
 async fn api_routes_require_bearer_token_when_configured() {
     let pool = support::test_pool().await;
     let mut config = gpt_copy_v9::config::Config::for_test();
-    config.api_auth_token = Some("test-token".to_string());
+    config.api_auth_token = "test-token".to_string();
     let openrouter = Arc::new(FakeOpenRouterClient { responses: vec![] });
     let app = gpt_copy_v9::build_app_with_client(config, pool, openrouter).await;
     let mut server = TestServer::new(app).unwrap();
@@ -33,7 +33,7 @@ async fn api_routes_require_bearer_token_when_configured() {
 async fn cors_preflight_allows_json_and_authorization_headers() {
     let pool = support::test_pool().await;
     let mut config = gpt_copy_v9::config::Config::for_test();
-    config.api_auth_token = Some("test-token".to_string());
+    config.api_auth_token = "test-token".to_string();
     let openrouter = Arc::new(FakeOpenRouterClient { responses: vec![] });
     let app = gpt_copy_v9::build_app_with_client(config, pool, openrouter).await;
     let server = TestServer::new(app).unwrap();

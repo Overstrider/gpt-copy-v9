@@ -15,21 +15,21 @@ use axum::{
     extract::{Request, State},
     http::{
         HeaderValue, Method,
-        header::{AUTHORIZATION, CONTENT_TYPE},
+        header::{AUTHORIZATION, CONTENT_TYPE, ORIGIN},
     },
     middleware::{self, Next},
     response::Response,
     routing::{delete, get, post},
 };
+use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 use config::Config;
 use error::{AppError, AppResult};
 use openrouter::HttpOpenRouterClient;
-use state::{AppState, StreamRegistry};
-
-const MAX_CONCURRENT_STREAMS: usize = 8;
+use state::{AppState, AuthenticatedUser, StreamRegistry};
 
 pub async fn build_app(config: Config, db: sqlx::SqlitePool) -> Router {
     let openrouter: Arc<dyn openrouter::OpenRouterClient + Send + Sync> =
@@ -50,13 +50,15 @@ pub async fn build_app_with_client(
         db,
         config,
         openrouter,
-        stream_registry: StreamRegistry::with_max_concurrent(MAX_CONCURRENT_STREAMS),
+        stream_registry: StreamRegistry::with_max_concurrent(state::DEFAULT_MAX_CONCURRENT_STREAMS),
     };
 
     let cors = CorsLayer::new()
         .allow_origin(frontend_origin)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
-        .allow_headers([CONTENT_TYPE, AUTHORIZATION]);
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
+        .allow_credentials(false)
+        .vary([ORIGIN]);
 
     let api_routes = Router::new()
         .route(
@@ -97,24 +99,34 @@ pub async fn build_app_with_client(
 
 async fn require_api_auth(
     State(state): State<AppState>,
-    req: Request,
+    mut req: Request,
     next: Next,
 ) -> AppResult<Response> {
-    let Some(expected_token) = state.config.api_auth_token.as_deref() else {
-        return Ok(next.run(req).await);
-    };
-
     let provided_token = req
         .headers()
         .get(AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.strip_prefix("Bearer "));
 
-    if provided_token != Some(expected_token) {
+    if !valid_bearer_token(provided_token, &state.config.api_auth_token) {
         return Err(AppError::Unauthorized(
             "Invalid or missing API token".to_string(),
         ));
     }
 
+    req.extensions_mut().insert(AuthenticatedUser {
+        id: auth_user_id(&state.config.api_auth_token),
+    });
+
     Ok(next.run(req).await)
+}
+
+fn valid_bearer_token(provided_token: Option<&str>, expected_token: &str) -> bool {
+    provided_token
+        .map(|token| token.as_bytes().ct_eq(expected_token.as_bytes()).into())
+        .unwrap_or(false)
+}
+
+fn auth_user_id(token: &str) -> String {
+    format!("{:x}", Sha256::digest(token.as_bytes()))
 }

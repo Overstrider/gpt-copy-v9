@@ -1,5 +1,5 @@
 import { StreamEvent, StreamEventSchema } from "./schemas";
-import { API_AUTH_HEADERS, API_BASE_URL } from "./config";
+import { API_BASE_URL } from "./config";
 
 export type StreamCallbacks = {
   onDelta: (content: string) => void;
@@ -17,7 +17,7 @@ export async function streamChat(
     `${API_BASE_URL}/api/conversations/${conversationId}/stream`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...API_AUTH_HEADERS },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
       signal,
     }
@@ -51,33 +51,37 @@ export async function streamChat(
     }
   };
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      await fireDone();
-      break;
-    }
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        await fireDone();
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data: ")) continue;
-      const data = trimmed.slice(6);
-      try {
-        const parsed = JSON.parse(data) as unknown;
-        const event = StreamEventSchema.safeParse(parsed);
-        if (!event.success) continue;
-        await handleStreamEvent(event.data, { ...callbacks, onDone: fireDone });
-        if (event.data.type === "done" || event.data.type === "error") {
-          return;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ")) continue;
+        const data = trimmed.slice(6);
+        try {
+          const parsed = JSON.parse(data) as unknown;
+          const event = StreamEventSchema.safeParse(parsed);
+          if (!event.success) continue;
+          await handleStreamEvent(event.data, { ...callbacks, onDone: fireDone });
+          if (event.data.type === "done" || event.data.type === "error") {
+            return;
+          }
+        } catch {
+          // skip malformed
         }
-      } catch {
-        // skip malformed
       }
     }
+  } finally {
+    await reader.cancel().catch(() => {});
   }
 }
 

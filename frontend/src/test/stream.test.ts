@@ -92,4 +92,28 @@ describe("streamChat", () => {
     expect(onDelta).not.toHaveBeenCalled();
     expect(onError).not.toHaveBeenCalled();
   });
+
+  it("cancels the stream reader after a terminal event", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode('data: {"type":"done"}\n\n')
+        );
+      },
+      cancel,
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(body, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamChat("conv-1", "Hi", {
+      onDelta: vi.fn(),
+      onDone: vi.fn(),
+      onError: vi.fn(),
+    });
+
+    expect(cancel).toHaveBeenCalledOnce();
+  });
 });

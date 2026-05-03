@@ -1,5 +1,5 @@
 use axum::{
-    Json,
+    Extension, Json,
     body::Body,
     extract::{Path, State},
     http::StatusCode,
@@ -8,7 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AppError, AppResult};
-use crate::state::AppState;
+use crate::state::{AppState, AuthenticatedUser};
 use crate::validation::validate_message_content;
 
 #[derive(Deserialize)]
@@ -29,12 +29,13 @@ enum SsePayload<'a> {
 
 pub async fn stream_chat(
     State(state): State<AppState>,
+    Extension(user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<String>,
     Json(body): Json<StreamRequest>,
 ) -> AppResult<Response> {
     validate_message_content(&body.content)?;
     // Ensure conversation exists
-    crate::repository::get_conversation(&state.db, &conversation_id).await?;
+    crate::repository::get_conversation(&state.db, &conversation_id, &user.id).await?;
 
     let stream_guard = state
         .stream_registry
@@ -46,13 +47,14 @@ pub async fn stream_chat(
         })?;
 
     // Get conversation history
-    let history = match crate::repository::list_messages(&state.db, &conversation_id).await {
-        Ok(history) => history,
-        Err(e) => {
-            drop(stream_guard);
-            return Err(e);
-        }
-    };
+    let history =
+        match crate::repository::list_messages(&state.db, &conversation_id, &user.id).await {
+            Ok(history) => history,
+            Err(e) => {
+                drop(stream_guard);
+                return Err(e);
+            }
+        };
     let history_start = history.len().saturating_sub(MAX_CONTEXT_MESSAGES);
     let mut messages: Vec<crate::openrouter::ChatMessage> = history[history_start..]
         .iter()
@@ -96,6 +98,7 @@ pub async fn stream_chat(
 
     let db2 = db.clone();
     let conv_id2 = conv_id.clone();
+    let owner_id = user.id.clone();
     let user_content = body.content.clone();
 
     tokio::spawn(async move {
@@ -125,6 +128,7 @@ pub async fn stream_chat(
                         match crate::repository::create_user_assistant_message_pair(
                             &db2,
                             &conv_id2,
+                            &owner_id,
                             &user_content,
                             &content,
                         )

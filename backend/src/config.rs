@@ -9,7 +9,7 @@ pub struct Config {
     pub host: String,
     pub port: u16,
     pub frontend_origin: String,
-    pub api_auth_token: Option<String>,
+    pub api_auth_token: String,
 }
 
 impl fmt::Debug for Config {
@@ -21,10 +21,7 @@ impl fmt::Debug for Config {
             .field("host", &self.host)
             .field("port", &self.port)
             .field("frontend_origin", &self.frontend_origin)
-            .field(
-                "api_auth_token",
-                &self.api_auth_token.as_ref().map(|_| "[REDACTED]"),
-            )
+            .field("api_auth_token", &"[REDACTED]")
             .finish()
     }
 }
@@ -60,7 +57,7 @@ impl Config {
             host,
             port,
             frontend_origin,
-            api_auth_token: Some(api_auth_token),
+            api_auth_token,
         }
     }
 
@@ -73,7 +70,7 @@ impl Config {
             host: "127.0.0.1".to_string(),
             port: 3001,
             frontend_origin: "http://localhost:3000".to_string(),
-            api_auth_token: None,
+            api_auth_token: "test-token".to_string(),
         }
     }
 }
