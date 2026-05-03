@@ -26,20 +26,19 @@ pub async fn stream_chat(
     // Ensure conversation exists
     crate::repository::get_conversation(&state.db, &conversation_id).await?;
 
-    // Persist user message
-    let _user_msg =
-        crate::repository::create_message(&state.db, &conversation_id, "user", &body.content)
-            .await?;
-
     // Get conversation history
     let history = crate::repository::list_messages(&state.db, &conversation_id).await?;
-    let messages: Vec<crate::openrouter::ChatMessage> = history
+    let mut messages: Vec<crate::openrouter::ChatMessage> = history
         .iter()
         .map(|m| crate::openrouter::ChatMessage {
             role: m.role.clone(),
             content: m.content.clone(),
         })
         .collect();
+    messages.push(crate::openrouter::ChatMessage {
+        role: "user".to_string(),
+        content: body.content.clone(),
+    });
 
     let db = state.db.clone();
     let conv_id = conversation_id.clone();
@@ -49,6 +48,11 @@ pub async fn stream_chat(
         .stream_chat(&state.config.openrouter_model, messages)
         .await
         .map_err(|e| AppError::OpenRouter(e.to_string()))?;
+
+    // Persist only after the upstream stream is confirmed open.
+    let _user_msg =
+        crate::repository::create_message(&state.db, &conversation_id, "user", &body.content)
+            .await?;
 
     use futures_util::StreamExt;
     use std::sync::{Arc, Mutex};
@@ -67,9 +71,10 @@ pub async fn stream_chat(
             }
             Ok(crate::openrouter::StreamEvent::Done) => "data: {\"type\":\"done\"}\n\n".to_string(),
             Err(e) => {
+                tracing::error!("Streaming chat error: {e}");
                 format!(
                     "data: {{\"type\":\"error\",\"message\":{}}}\n\n",
-                    serde_json::json!(e.to_string())
+                    serde_json::json!(stream_error_message(e))
                 )
             }
         };
@@ -86,27 +91,36 @@ pub async fn stream_chat(
     tokio::spawn(async move {
         use futures_util::StreamExt;
         let mut s = Box::pin(sse_stream);
+        let mut completed = false;
+        let mut client_connected = true;
         while let Some(item) = s.next().await {
-            // Detect done by parsing the SSE envelope JSON (not fragile string match).
-            let is_done = item
+            let (is_done, is_error) = item
                 .as_ref()
-                .map(|sse: &String| {
-                    sse.strip_prefix("data: ")
-                        .or_else(|| sse.lines().find_map(|l| l.strip_prefix("data: ")))
-                        .and_then(|d| serde_json::from_str::<serde_json::Value>(d).ok())
-                        .and_then(|v| v.get("type").and_then(|t| t.as_str()).map(|t| t == "done"))
-                        .unwrap_or(false)
+                .map(|sse| {
+                    (
+                        sse_type_matches(sse, "done"),
+                        sse_type_matches(sse, "error"),
+                    )
                 })
-                .unwrap_or(false);
-            let _ = tx.send(item).await;
+                .unwrap_or((false, false));
+            if tx.send(item).await.is_err() {
+                client_connected = false;
+                break;
+            }
             if is_done {
+                completed = true;
+                break;
+            }
+            if is_error {
                 break;
             }
         }
-        // Persist assistant message
-        let content = buf_final.lock().unwrap().clone();
-        if !content.is_empty() {
-            let _ = crate::repository::create_message(&db2, &conv_id2, "assistant", &content).await;
+        if completed && client_connected {
+            let content = buf_final.lock().unwrap().clone();
+            if !content.is_empty() {
+                let _ =
+                    crate::repository::create_message(&db2, &conv_id2, "assistant", &content).await;
+            }
         }
     });
 
@@ -122,4 +136,26 @@ pub async fn stream_chat(
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(response)
+}
+
+fn stream_error_message(error: &AppError) -> &'static str {
+    match error {
+        AppError::OpenRouter(_) => "Upstream model service error",
+        AppError::Database(_) => "A database error occurred",
+        AppError::Internal(_) => "An internal server error occurred",
+        AppError::NotFound(_) | AppError::BadRequest(_) => "Stream error",
+    }
+}
+
+fn sse_type_matches(sse: &str, expected: &str) -> bool {
+    sse.strip_prefix("data: ")
+        .or_else(|| sse.lines().find_map(|line| line.strip_prefix("data: ")))
+        .and_then(|data| serde_json::from_str::<serde_json::Value>(data).ok())
+        .and_then(|value| {
+            value
+                .get("type")
+                .and_then(|event_type| event_type.as_str())
+                .map(|event_type| event_type == expected)
+        })
+        .unwrap_or(false)
 }
