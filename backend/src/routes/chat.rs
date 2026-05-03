@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::Response,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
@@ -18,6 +18,14 @@ pub struct StreamRequest {
 }
 
 const MAX_CONTEXT_MESSAGES: usize = 40;
+
+#[derive(Serialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+enum SsePayload<'a> {
+    Delta { content: &'a str },
+    Done,
+    Error { message: &'a str },
+}
 
 pub async fn stream_chat(
     State(state): State<AppState>,
@@ -82,18 +90,14 @@ pub async fn stream_chat(
         let chunk = match &event {
             Ok(crate::openrouter::StreamEvent::Delta(delta)) => {
                 buffer_clone.lock().unwrap().push_str(delta);
-                format!(
-                    "data: {{\"type\":\"delta\",\"content\":{}}}\n\n",
-                    serde_json::json!(delta)
-                )
+                sse_frame(&SsePayload::Delta { content: delta })
             }
-            Ok(crate::openrouter::StreamEvent::Done) => "data: {\"type\":\"done\"}\n\n".to_string(),
+            Ok(crate::openrouter::StreamEvent::Done) => sse_frame(&SsePayload::Done),
             Err(e) => {
                 tracing::error!("Streaming chat error: {e}");
-                format!(
-                    "data: {{\"type\":\"error\",\"message\":{}}}\n\n",
-                    serde_json::json!(stream_error_message(e))
-                )
+                sse_frame(&SsePayload::Error {
+                    message: stream_error_message(e),
+                })
             }
         };
         Ok::<_, std::convert::Infallible>(chunk)
@@ -127,22 +131,23 @@ pub async fn stream_chat(
                 .unwrap_or((false, false));
             if is_done {
                 completed = true;
+                break;
             }
             if tx.send(item).await.is_err() {
                 receiver_open = false;
                 break;
             }
-            if is_done || is_error {
-                stream_failed = is_error;
+            if is_error {
+                stream_failed = true;
                 break;
             }
         }
         let content = buf_final.lock().unwrap().clone();
         if !completed && receiver_open && !stream_failed && !content.is_empty() {
-            completed = true;
+            tracing::warn!("Streaming chat ended without a done event; skipping persistence");
         }
         if completed {
-            if let Err(e) = crate::repository::create_user_assistant_message_pair(
+            let terminal = match crate::repository::create_user_assistant_message_pair(
                 &db2,
                 &conv_id2,
                 &user_content,
@@ -150,8 +155,15 @@ pub async fn stream_chat(
             )
             .await
             {
-                tracing::error!("Failed to persist streamed message pair: {e}");
-            }
+                Ok(()) => sse_frame(&SsePayload::Done),
+                Err(e) => {
+                    tracing::error!("Failed to persist streamed message pair: {e}");
+                    sse_frame(&SsePayload::Error {
+                        message: "Failed to save streamed response",
+                    })
+                }
+            };
+            let _ = tx.send(Ok(terminal)).await;
         }
         release_registry.release(&release_conversation_id).await;
     });
@@ -177,6 +189,11 @@ fn stream_error_message(error: &AppError) -> &'static str {
         AppError::Internal(_) => "An internal server error occurred",
         AppError::NotFound(_) | AppError::BadRequest(_) | AppError::Conflict(_) => "Stream error",
     }
+}
+
+fn sse_frame(payload: &SsePayload<'_>) -> String {
+    let json = serde_json::to_string(payload).expect("serialize SSE payload");
+    format!("data: {json}\n\n")
 }
 
 fn sse_type_matches(sse: &str, expected: &str) -> bool {

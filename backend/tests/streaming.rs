@@ -208,7 +208,7 @@ async fn test_stream_error_is_sanitized_and_does_not_persist_partial_assistant()
 }
 
 #[tokio::test]
-async fn test_stream_clean_eof_persists_message_pair() {
+async fn test_stream_without_done_skips_persistence() {
     let (app, _pool) = test_app_with_client(Arc::new(NoDoneStreamClient)).await;
     let server = TestServer::new(app).unwrap();
 
@@ -233,11 +233,7 @@ async fn test_stream_clean_eof_persists_message_pair() {
     msgs_resp.assert_status_ok();
     let msgs: serde_json::Value = msgs_resp.json();
     let arr = msgs.as_array().unwrap();
-    assert_eq!(arr.len(), 2);
-    assert_eq!(arr[0]["role"], "user");
-    assert_eq!(arr[0]["content"], "Hello");
-    assert_eq!(arr[1]["role"], "assistant");
-    assert_eq!(arr[1]["content"], "clean eof");
+    assert_eq!(arr.len(), 0);
 }
 
 #[tokio::test]

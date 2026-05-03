@@ -25,26 +25,41 @@ export function useChatStream(conversationId: string | null) {
       setStreamContent("");
       setStreamError(null);
 
-      await streamChat(
-        conversationId,
-        content,
-        {
-          onDelta: (delta) => setStreamContent((prev) => prev + delta),
-          onDone: () => {
-            setStreamState("idle");
-            // Refresh messages to show persisted assistant reply
-            qc.invalidateQueries({
-              queryKey: messagesKey(conversationId),
-            });
-            setStreamContent("");
+      try {
+        await streamChat(
+          conversationId,
+          content,
+          {
+            onDelta: (delta) => setStreamContent((prev) => prev + delta),
+            onDone: () => {
+              setStreamState("idle");
+              // Refresh messages to show persisted assistant reply
+              qc.invalidateQueries({
+                queryKey: messagesKey(conversationId),
+              });
+              setStreamContent("");
+            },
+            onError: (msg) => {
+              setStreamState("error");
+              setStreamError(msg);
+            },
           },
-          onError: (msg) => {
-            setStreamState("error");
-            setStreamError(msg);
-          },
-        },
-        abortRef.current.signal
-      );
+          abortRef.current.signal
+        );
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          setStreamState("idle");
+          setStreamError(null);
+          return;
+        }
+        if (err instanceof Error) {
+          setStreamState("error");
+          setStreamError(err.message);
+        } else {
+          setStreamState("error");
+          setStreamError("Stream failed");
+        }
+      }
     },
     [conversationId, streamState, qc]
   );

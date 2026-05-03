@@ -28,6 +28,9 @@ impl Config {
     pub fn from_env() -> Self {
         let openrouter_api_key = env::var("OPENROUTER_API_KEY")
             .expect("OPENROUTER_API_KEY must be set (set it in .env or the environment)");
+        if openrouter_api_key.trim().is_empty() {
+            panic!("OPENROUTER_API_KEY must not be empty");
+        }
         let openrouter_model = env::var("OPENROUTER_MODEL")
             .unwrap_or_else(|_| "nvidia/nemotron-3-super-120b-a12b:free".to_string());
         let database_url =

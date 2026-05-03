@@ -92,8 +92,8 @@ impl OpenRouterClient for HttpOpenRouterClient {
         let byte_stream = response.bytes_stream();
 
         let sse_stream = stream::unfold(
-            (byte_stream, String::new()),
-            |(mut byte_stream, mut buf)| async move {
+            (byte_stream, String::new(), false),
+            |(mut byte_stream, mut buf, terminal_emitted)| async move {
                 loop {
                     // Drain any complete lines already in the buffer.
                     while let Some(pos) = buf.find('\n') {
@@ -101,7 +101,10 @@ impl OpenRouterClient for HttpOpenRouterClient {
                         let line = line.trim();
                         if let Some(data) = line.strip_prefix("data: ") {
                             if data == "[DONE]" {
-                                return Some((vec![Ok(StreamEvent::Done)], (byte_stream, buf)));
+                                return Some((
+                                    vec![Ok(StreamEvent::Done)],
+                                    (byte_stream, buf, true),
+                                ));
                             }
                             if let Ok(val) = serde_json::from_str::<serde_json::Value>(data) {
                                 if let Some(delta) = val
@@ -111,7 +114,7 @@ impl OpenRouterClient for HttpOpenRouterClient {
                                     let delta = delta.to_string();
                                     return Some((
                                         vec![Ok(StreamEvent::Delta(delta))],
-                                        (byte_stream, buf),
+                                        (byte_stream, buf, terminal_emitted),
                                     ));
                                 }
                             }
@@ -127,11 +130,16 @@ impl OpenRouterClient for HttpOpenRouterClient {
                         Some(Err(e)) => {
                             return Some((
                                 vec![Err(AppError::OpenRouter(e.to_string()))],
-                                (byte_stream, buf),
+                                (byte_stream, buf, true),
                             ));
                         }
                         None => {
-                            // Stream exhausted.
+                            if !terminal_emitted {
+                                return Some((
+                                    vec![Ok(StreamEvent::Done)],
+                                    (byte_stream, buf, true),
+                                ));
+                            }
                             return None;
                         }
                     }

@@ -7,16 +7,14 @@ import {
   MessageListSchema,
   MessageSchema,
 } from "./schemas";
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { API_BASE_URL } from "./config";
 
 async function fetchJson<T>(
   schema: z.ZodType<T>,
   input: RequestInfo,
   init?: RequestInit
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${input}`, {
+  const res = await fetch(`${API_BASE_URL}${input}`, {
     headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
   });
@@ -62,7 +60,7 @@ export async function updateConversation(
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/api/conversations/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${id}`, {
     method: "DELETE",
   });
   if (!res.ok && res.status !== 204) {
@@ -98,7 +96,7 @@ export async function deleteMessage(
   messageId: string
 ): Promise<void> {
   const res = await fetch(
-    `${BASE_URL}/api/conversations/${conversationId}/messages/${messageId}`,
+    `${API_BASE_URL}/api/conversations/${conversationId}/messages/${messageId}`,
     { method: "DELETE" }
   );
   if (!res.ok && res.status !== 204) {

@@ -13,10 +13,6 @@ async fn main() -> anyhow::Result<()> {
 
     let config = gpt_copy_v9::config::Config::from_env();
 
-    if config.openrouter_api_key.is_empty() {
-        tracing::warn!("OPENROUTER_API_KEY is not set — streaming chat will not work");
-    }
-
     tracing::info!("Connecting to database: {}", config.database_url);
     let db = gpt_copy_v9::db::connect(&config.database_url).await?;
 

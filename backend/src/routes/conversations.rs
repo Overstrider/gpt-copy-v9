@@ -9,7 +9,7 @@ use serde::Deserialize;
 use crate::error::AppResult;
 use crate::models::Conversation;
 use crate::state::AppState;
-use crate::validation::validate_create_conversation;
+use crate::validation::validate_conversation_title;
 
 #[derive(Deserialize)]
 pub struct CreateConversationRequest {
@@ -32,7 +32,7 @@ pub async fn create_conversation(
     State(state): State<AppState>,
     Json(body): Json<CreateConversationRequest>,
 ) -> AppResult<(StatusCode, Json<Conversation>)> {
-    validate_create_conversation(&body.title)?;
+    validate_conversation_title(&body.title)?;
     let title = body.title.unwrap_or_else(|| "New Chat".to_string());
     let conv = crate::repository::create_conversation(&state.db, &title).await?;
     Ok((StatusCode::CREATED, Json(conv)))
@@ -51,7 +51,7 @@ pub async fn update_conversation(
     Path(id): Path<String>,
     Json(body): Json<UpdateConversationRequest>,
 ) -> AppResult<Json<Conversation>> {
-    validate_create_conversation(&body.title)?;
+    validate_conversation_title(&body.title)?;
     let conv =
         crate::repository::update_conversation(&state.db, &id, body.title.as_deref()).await?;
     Ok(Json(conv))

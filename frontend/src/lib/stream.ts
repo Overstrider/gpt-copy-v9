@@ -1,7 +1,5 @@
 import { StreamEvent, StreamEventSchema } from "./schemas";
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { API_BASE_URL } from "./config";
 
 export type StreamCallbacks = {
   onDelta: (content: string) => void;
@@ -16,7 +14,7 @@ export async function streamChat(
   signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(
-    `${BASE_URL}/api/conversations/${conversationId}/stream`,
+    `${API_BASE_URL}/api/conversations/${conversationId}/stream`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -45,11 +43,18 @@ export async function streamChat(
 
   const decoder = new TextDecoder();
   let buffer = "";
+  let doneFired = false;
+  const fireDone = () => {
+    if (!doneFired) {
+      doneFired = true;
+      callbacks.onDone();
+    }
+  };
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
-      callbacks.onDone();
+      fireDone();
       break;
     }
     buffer += decoder.decode(value, { stream: true });
@@ -65,7 +70,7 @@ export async function streamChat(
         const parsed = JSON.parse(data) as unknown;
         const event = StreamEventSchema.safeParse(parsed);
         if (!event.success) continue;
-        handleStreamEvent(event.data, callbacks);
+        handleStreamEvent(event.data, { ...callbacks, onDone: fireDone });
         if (event.data.type === "done" || event.data.type === "error") {
           return;
         }

@@ -1,6 +1,9 @@
 use crate::error::{AppError, AppResult};
 
-pub fn validate_create_conversation(title: &Option<String>) -> AppResult<()> {
+// Keep request payloads bounded for context-window safety and abuse prevention.
+const MAX_MESSAGE_BYTES: usize = 32_768;
+
+pub fn validate_conversation_title(title: &Option<String>) -> AppResult<()> {
     if let Some(t) = title {
         if t.trim().is_empty() {
             return Err(AppError::BadRequest(
@@ -22,7 +25,7 @@ pub fn validate_message_content(content: &str) -> AppResult<()> {
             "Message content cannot be empty".to_string(),
         ));
     }
-    if content.len() > 32_768 {
+    if content.len() > MAX_MESSAGE_BYTES {
         return Err(AppError::BadRequest(
             "Message content exceeds maximum length".to_string(),
         ));
