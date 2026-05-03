@@ -11,3 +11,4 @@ coverage/
 .codedungeon/*.db
 .codedungeon/*.db-journal
 .codedungeon/logs/
+.claude/bin/
